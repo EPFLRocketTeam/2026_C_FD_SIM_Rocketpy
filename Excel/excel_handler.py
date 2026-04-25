@@ -192,7 +192,6 @@ def read_all_configs(filepath: str | Path) -> list[SimulationInputs]:
 
     return results
 
-
 def read_config_by_id(filepath: str | Path, config_id: str) -> SimulationInputs:
     """Read a single config by its ID (e.g. '2026_C_PR_B3_CONFIG4')."""
     for cfg in read_all_configs(filepath):
@@ -216,15 +215,3 @@ if __name__ == "__main__":
               f"| thrust={cfg.thrust_full_N:5.0f}N | impulse={cfg.total_impulse_Ns:6.0f}Ns "
               f"| burn={cfg.burn_time_s:.2f}s")
 
-    # Example of what writing back would look like.
-    # Uncomment to actually write (modifies the file!):
-    # example_outputs = [
-    #     SimulationOutputs(
-    #         config_id="2025_C_PR_B3_CONFIG4",
-    #         apogee_m=9999.0,
-    #         rail_exit_static_margin=8.888,
-    #         rail_exit_velocity_ms=77.7,
-    #     ),
-    # ]
-    # write_outputs(path, example_outputs)
-    # print(f"\nWrote {len(example_outputs)} outputs back to {path}")
