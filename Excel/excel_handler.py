@@ -6,8 +6,12 @@ Target sheet: "Simulations"
 
 Layout:
   Row 2: top-level headers (Simulations inputs / Simulations outputs)
-  Row 3: sub-headers (Mass total, Mass remaining, Full, Derated, Ramp up, ...)
-  Row 4: "Firehorn 1" reference row (NOT a simulation to run)
+  Row 3: sub-headers (Mass total, Mass remaining, Full, Ramp up, ...)
+  Row 4: "Firehorn 1" reference row.
+      NOT a simulation to run — it's the historical Firehorn 1 flight data,
+      kept here for reference. Whenever a cell in a simulation row is empty,
+      we fall back to the corresponding cell in row 4 instead of skipping
+      the row.
   Rows 5-52: simulation configs, grouped into 5 campaigns:
       THRUST1  (rows 5-16)
       THRUST2  (rows 17-28)
@@ -24,14 +28,8 @@ from __future__ import annotations
 # become "1 May"). We need the datetime module to check `isinstance(value, dt.datetime)`.
 import datetime as dt
 
-# `dataclass` is a decorator that turns a plain class into a typed data
-# container — it auto-generates the __init__, __repr__, and equality methods
-# so we don't have to write them by hand.
 from dataclasses import dataclass
 
-# `Path` is Python's modern way to represent a filesystem path. We only use
-# it in type hints (`str | Path`) so callers can pass either a plain string
-# or a Path object — both work.
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -39,6 +37,7 @@ from openpyxl import load_workbook
 
 # ---------- File layout constants ----------
 SHEET_NAME = "Simulations"
+FIREHORN1_ROW = 4                # Reference row used as fallback for empty cells
 FIRST_CONFIG_ROW = 5
 LAST_CONFIG_ROW = 52
 
@@ -51,7 +50,6 @@ COL_OX_MASS_REMAINING = "F"      # Oxidizer mass remaining [kg]
 COL_FUEL_MASS_TOTAL = "G"        # Fuel mass total [kg]
 COL_FUEL_MASS_REMAINING = "H"    # Fuel mass remaining [kg]
 COL_THRUST_FULL = "I"            # Thrust full [N]
-COL_THRUST_DERATED = "J"         # Thrust derated [N] — may be "ND" (Not Derated) for engines that run at constant thrust
 COL_TOTAL_IMPULSE = "K"          # Total Impulse [Ns]
 COL_RAMP_UP = "L"                # Timing: ramp up [s]
 COL_BURN_TIME = "M"              # Timing: burn time [s]
@@ -59,13 +57,9 @@ COL_RAMP_DOWN = "N"              # Timing: ramp down [s]
 COL_INPUT_DESCRIPTION = "O"
 
 # Output columns (what we WRITE after running the simulator)
-# Apogee = maximum altitude the rocket reaches before falling back down.
-# Static margin = rocket stability metric at rail exit, in calibers.
-# Rail exit velocity = speed when the rocket clears the launch rail.
 COL_APOGEE = "S"                 # Apogee [m]
 COL_STATIC_MARGIN = "T"          # Rail exit static margin [c]
 COL_RAIL_EXIT_VELOCITY = "U"     # Rail exit velocity [m/s]
-
 
 
 # ---------- Data classes ----------
@@ -81,28 +75,11 @@ class SimulationInputs:
     fuel_mass_total_kg: float
     fuel_mass_remaining_kg: float
     thrust_full_N: float
-    # Derated thrust can be the string "ND" (Not Derated) — for engines that
-    # don't step thrust down partway through the burn. Hence the float-or-str type.
-    thrust_derated_N: float | str
     total_impulse_Ns: float
     ramp_up_s: float
     burn_time_s: float
     ramp_down_s: float
     description: str | None = None
-
-    def is_placeholder(self) -> bool:
-        """Return True if this row looks like an unfilled stub config.
-
-        Some rows in the spreadsheet have placeholder values (thrust = 1 N,
-        burn time = 0.3 s) — they're rows the engineers haven't filled in
-        with real data yet. We skip them when running simulations because
-        they'd either crash the sim or produce meaningless results.
-
-        This method is defined on the dataclass so we can write
-        `sim.is_placeholder()` in the filter logic below — more readable
-        than a standalone function.
-        """
-        return self.thrust_full_N == 1 and self.burn_time_s <= 0.3
 
 
 @dataclass
@@ -137,15 +114,37 @@ def _get_cell(ws, col: str, row: int):
     """Read a cell by column letter and row number."""
     return ws[f"{col}{row}"].value
 
+
+def _get_with_fallback(ws, col: str, row: int) -> float:
+    """Read a numeric cell. If it's empty, fall back to the same column on
+    the Firehorn 1 reference row.
+
+    Logs a [fallback] message whenever the substitution happens, so it's
+    clear in the output which values came from row 4 vs. the actual row.
+    Raises ValueError if BOTH the data row and Firehorn 1 are empty.
+    """
+    raw = _get_cell(ws, col, row)
+    if raw is not None:
+        return _to_float(raw, f"{col}{row}")
+
+    # Cell is empty — try the Firehorn 1 fallback.
+    fallback_raw = _get_cell(ws, col, FIREHORN1_ROW)
+    if fallback_raw is None:
+        raise ValueError(
+            f"Cell {col}{row} is empty AND the Firehorn 1 fallback "
+            f"({col}{FIREHORN1_ROW}) is also empty."
+        )
+    fallback_value = _to_float(fallback_raw, f"{col}{FIREHORN1_ROW}")
+    print(f"  [fallback] row {row}, col {col}: empty -> using Firehorn 1 value {fallback_value}")
+    return fallback_value
+
+
 # ---------- Reading ----------
-def read_all_configs(filepath: str | Path, skip_placeholders: bool = True) -> list[SimulationInputs]:
+def read_all_configs(filepath: str | Path) -> list[SimulationInputs]:
     """Read every simulation config from the Simulations sheet.
 
-    Parameters
-    ----------
-    filepath : path to the propellant budget xlsx file
-    skip_placeholders : if True, omit rows that look like stub configs
-                        (thrust=1, burn_time<=0.3). Default: True.
+    Empty cells are filled in from the Firehorn 1 reference row (row 4)
+    via _get_with_fallback().
     """
     wb = load_workbook(filepath, data_only=True)
     if SHEET_NAME not in wb.sheetnames:
@@ -158,7 +157,7 @@ def read_all_configs(filepath: str | Path, skip_placeholders: bool = True) -> li
     for row in range(FIRST_CONFIG_ROW, LAST_CONFIG_ROW + 1):
         config_id = _get_cell(ws, COL_CONFIG_ID, row)
         if config_id is None:
-            continue  # skip empty rows
+            continue  # truly empty rows still get skipped; only known configs use fallbacks
 
         # Campaign name only appears on the first row of each group;
         # carry it forward for subsequent rows in the same group.
@@ -167,38 +166,26 @@ def read_all_configs(filepath: str | Path, skip_placeholders: bool = True) -> li
             current_campaign = str(campaign_cell)
 
         try:
-            # Derated thrust can be the string "ND" for non-derated engines.
-            derated_raw = _get_cell(ws, COL_THRUST_DERATED, row)
-            derated: float | str
-            if isinstance(derated_raw, str):
-                derated = derated_raw
-            else:
-                derated = _to_float(derated_raw, f"{COL_THRUST_DERATED}{row}")
-
             sim = SimulationInputs(
                 row=row,
                 campaign=current_campaign,
                 config_id=str(config_id),
-                n2_mass_kg=_to_float(_get_cell(ws, COL_N2_MASS, row), f"{COL_N2_MASS}{row}"),
-                ox_mass_total_kg=_to_float(_get_cell(ws, COL_OX_MASS_TOTAL, row), f"{COL_OX_MASS_TOTAL}{row}"),
-                ox_mass_remaining_kg=_to_float(_get_cell(ws, COL_OX_MASS_REMAINING, row), f"{COL_OX_MASS_REMAINING}{row}"),
-                fuel_mass_total_kg=_to_float(_get_cell(ws, COL_FUEL_MASS_TOTAL, row), f"{COL_FUEL_MASS_TOTAL}{row}"),
-                fuel_mass_remaining_kg=_to_float(_get_cell(ws, COL_FUEL_MASS_REMAINING, row), f"{COL_FUEL_MASS_REMAINING}{row}"),
-                thrust_full_N=_to_float(_get_cell(ws, COL_THRUST_FULL, row), f"{COL_THRUST_FULL}{row}"),
-                thrust_derated_N=derated,
-                total_impulse_Ns=_to_float(_get_cell(ws, COL_TOTAL_IMPULSE, row), f"{COL_TOTAL_IMPULSE}{row}"),
-                ramp_up_s=_to_float(_get_cell(ws, COL_RAMP_UP, row), f"{COL_RAMP_UP}{row}"),
-                burn_time_s=_to_float(_get_cell(ws, COL_BURN_TIME, row), f"{COL_BURN_TIME}{row}"),
-                ramp_down_s=_to_float(_get_cell(ws, COL_RAMP_DOWN, row), f"{COL_RAMP_DOWN}{row}"),
+                n2_mass_kg=_get_with_fallback(ws, COL_N2_MASS, row),
+                ox_mass_total_kg=_get_with_fallback(ws, COL_OX_MASS_TOTAL, row),
+                ox_mass_remaining_kg=_get_with_fallback(ws, COL_OX_MASS_REMAINING, row),
+                fuel_mass_total_kg=_get_with_fallback(ws, COL_FUEL_MASS_TOTAL, row),
+                fuel_mass_remaining_kg=_get_with_fallback(ws, COL_FUEL_MASS_REMAINING, row),
+                thrust_full_N=_get_with_fallback(ws, COL_THRUST_FULL, row),
+                total_impulse_Ns=_get_with_fallback(ws, COL_TOTAL_IMPULSE, row),
+                ramp_up_s=_get_with_fallback(ws, COL_RAMP_UP, row),
+                burn_time_s=_get_with_fallback(ws, COL_BURN_TIME, row),
+                ramp_down_s=_get_with_fallback(ws, COL_RAMP_DOWN, row),
                 description=_get_cell(ws, COL_INPUT_DESCRIPTION, row),
             )
         except (ValueError, TypeError) as e:
-            # Row has missing or malformed data; skip it with a warning
-            # instead of crashing the whole read.
+            # Row has missing or malformed data that even the fallback couldn't
+            # rescue; skip it with a warning instead of crashing the whole read.
             print(f"  [skip] row {row} ({config_id}): {e}")
-            continue
-
-        if skip_placeholders and sim.is_placeholder():
             continue
 
         results.append(sim)
@@ -208,44 +195,10 @@ def read_all_configs(filepath: str | Path, skip_placeholders: bool = True) -> li
 
 def read_config_by_id(filepath: str | Path, config_id: str) -> SimulationInputs:
     """Read a single config by its ID (e.g. '2026_C_PR_B3_CONFIG4')."""
-    for cfg in read_all_configs(filepath, skip_placeholders=False):
+    for cfg in read_all_configs(filepath):
         if cfg.config_id == config_id:
             return cfg
     raise KeyError(f"Config {config_id!r} not found in {filepath}")
-
-
-# ---------- Writing ----------
-def write_outputs(
-    filepath: str | Path,
-    outputs: list[SimulationOutputs],
-) -> None:
-    """Write simulation outputs to the correct rows, matched by config_id."""
-    # No data_only here — we want to preserve formulas in cells we don't touch.
-    wb = load_workbook(filepath)
-    if SHEET_NAME not in wb.sheetnames:
-        raise ValueError(f"Sheet {SHEET_NAME!r} not found. Available: {wb.sheetnames}")
-    ws = wb[SHEET_NAME]
-
-    # Build a lookup from config_id to row number by scanning the sheet.
-    # Matching outputs to rows by config_id (not hardcoded row numbers)
-    # keeps the writer robust even if rows get reordered later.
-    id_to_row: dict[str, int] = {}
-    for row in range(FIRST_CONFIG_ROW, LAST_CONFIG_ROW + 1):
-        cid = _get_cell(ws, COL_CONFIG_ID, row)
-        if cid is not None:
-            id_to_row[str(cid)] = row
-
-    missing = [o.config_id for o in outputs if o.config_id not in id_to_row]
-    if missing:
-        raise ValueError(f"These config_ids were not found in the sheet: {missing}")
-
-    for out in outputs:
-        row = id_to_row[out.config_id]
-        ws[f"{COL_APOGEE}{row}"] = out.apogee_m
-        ws[f"{COL_STATIC_MARGIN}{row}"] = out.rail_exit_static_margin
-        ws[f"{COL_RAIL_EXIT_VELOCITY}{row}"] = out.rail_exit_velocity_ms
-
-    wb.save(filepath)
 
 # ---------- Quick self-test ----------
 if __name__ == "__main__":
@@ -254,9 +207,9 @@ if __name__ == "__main__":
     # Default filename matches the current CDR version of the file.
     path = sys.argv[1] if len(sys.argv) > 1 else "2026_C_SE_PROPELLANT_BUDGET_CDR.xlsx"
 
-    print(f"=== Reading all real configs from {path} ===")
-    configs = read_all_configs(path, skip_placeholders=True)
-    print(f"Got {len(configs)} real configs (placeholders skipped).\n")
+    print(f"=== Reading all configs from {path} ===")
+    configs = read_all_configs(path)
+    print(f"\nGot {len(configs)} configs.\n")
     for cfg in configs:
         campaign = cfg.campaign or "?"
         print(f"  row {cfg.row:2d} | {campaign:8s} | {cfg.config_id:30s} "
