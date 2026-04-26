@@ -1,0 +1,62 @@
+{
+  "General": {
+    "Version": "CH",
+    "savefiles": true,
+    "N_points": 1000,
+    "run_environment": true,
+    "write_to_file": false,
+    "out_filename": "output_CH.csv"
+  },
+  "Propellant_tanks_geometry": {
+    "r_int": 0.115,
+    "h_cyl": 0.3851008075,
+    "h_cap": 0.05
+  },
+  "Hold-down": {
+    "alpha": 6,
+    "beta": 6,
+    "l_rail": 11.65,
+    "g": 9.81,
+    "F_HD_break": 3300,
+    "mu": 0.5,
+    "m_dry": 108,
+    "m_additions": 0
+  },
+  "Propellant_Masses": {
+    "OF_ratio": 1.5,
+    "ISP": 220,
+    "Thrust": 6500,
+    "Total_impulse": 40500,
+    "fraction_film_cooling": 0.0750,
+    "mass_flow_rate_ethanol": null,
+    "mass_flow_rate_ethanol_ignition": 0,
+    "mass_flow_rate_lox_boil_off": 0.001,
+    "mass_flow_rate_lox_ignition": 4.362,
+    "mass_flow_rate_lox_prechill": 4.362,
+    "hold_time": 300,
+    "prechill_time": 0.200,
+    "ignition_delay": -0.050,
+    "ramp_up_time": 0.400,
+    "cutoff_time": 0.025,
+    "ramp_down_time": 0.200,
+    "m_fuel_delay": 0,
+    "m_fuel_end": null,
+    "rho_fuel": 810,
+    "m_ox_boil_off": null,
+    "m_ox_prechill": null,
+    "m_ox_delay": null,
+    "m_ox_end": 0.577,
+    "rho_ox": 1154,
+    "m_n2_copv": 2.605
+  },
+  "thrust_Curve": {
+    "F_full_thrust": 6500,
+    "F_derating": 6500,
+    "F_ramp_down": 6500,
+    "F_shutdown": 0,
+    "t_full_thrust": 0.400,
+    "t_ramp_down": null,
+    "t_derating": null,
+    "t_shutdown": null
+  }
+}
