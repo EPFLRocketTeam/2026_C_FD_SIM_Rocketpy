@@ -1,77 +1,57 @@
 from __future__ import annotations
 from dataclasses import dataclass, fields
 import numpy as np
-from typing import List, Tuple
+from typing import Tuple
 import pandas as pd
 
-def dfs_from_excel(
-    file:str,
-    nsims:int = 44,
-    sheet_cfg:str = "Config",
-    head_config:int = 1,
-    cols_config:str = "B:M",
-    row1_config:int = 3,
-    sheet_bgt:str = "Budget",
-    head_timings:int = 2,
-    cols_timings:str = "B:I",
-    row1_timings:int = 5,
-    head_pressurant:int = 55,
-    cols_pressurant:str = "B:F",
-    row1_pressurant:int = 58,
-    head_oxidizer:int = 108,
-    cols_oxidizer:str = "B:V",
-    row1_oxidizer:int = 111,
-    head_fuel:int = 161,
-    cols_fuel:str = "B:V",
-    row1_fuel:int = 164
-    ) -> Tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame]:
-    df_cfg = pd.read_excel(
-        file,
-        sheet_cfg,
-        header=0,
-        usecols=cols_config,
-        skiprows=list(range(head_config-1)) + list(range(head_config,row1_config-1)),
-        index_col=0,
-        nrows=nsims
-        )
-    df_bgt_timings = pd.read_excel(
-        file,
-        sheet_bgt,
-        header=0,
-        usecols=cols_timings,
-        skiprows=list(range(head_timings-1)) + list(range(head_timings,row1_timings-1)),
-        index_col=0,
-        nrows=nsims
-        )
-    df_bgt_pressurant = pd.read_excel(
-        file,
-        sheet_bgt,
-        header=0,
-        usecols=cols_pressurant,
-        skiprows=list(range(head_pressurant-1)) + list(range(head_pressurant,row1_pressurant-1)),
-        index_col=0,
-        nrows=nsims
-        )
-    df_bgt_oxidizer = pd.read_excel(
-        file,
-        sheet_bgt,
-        header=0,
-        usecols=cols_oxidizer,
-        skiprows=list(range(head_oxidizer-1)) + list(range(head_oxidizer,row1_oxidizer-1)),
-        index_col=0,
-        nrows=nsims
-        )
-    df_bgt_fuel = pd.read_excel(
-        file,
-        sheet_bgt,
-        header=0,
-        usecols=cols_fuel,
-        skiprows=list(range(head_fuel-1)) + list(range(head_fuel,row1_fuel-1)),
-        index_col=0,
-        nrows=nsims
-        )
-    return df_cfg,df_bgt_timings,df_bgt_pressurant,df_bgt_oxidizer,df_bgt_fuel
+@dataclass(frozen=True)
+class _BlockSpec:
+    sheet: str
+    cols: str        # Excel column range, e.g. "B:M"
+    header_row: int  # 1-indexed row containing the column headers
+    first_data_row: int  # 1-indexed row of the first data row
+ 
+DEFAULT_BLOCKS: dict[str, _BlockSpec] = {
+    "cfg":        _BlockSpec(sheet="Config", cols="B:M", header_row=1,   first_data_row=3),
+    "timings":    _BlockSpec(sheet="Budget", cols="B:I", header_row=2,   first_data_row=5),
+    "pressurant": _BlockSpec(sheet="Budget", cols="B:F", header_row=55,  first_data_row=58),
+    "oxidizer":   _BlockSpec(sheet="Budget", cols="B:V", header_row=108, first_data_row=111),
+    "fuel":       _BlockSpec(sheet="Budget", cols="B:V", header_row=161, first_data_row=164),
+}
 
+def _read_block(file: str, spec: _BlockSpec, nsims: int) -> pd.DataFrame:
+    """Read one rectangular table from the workbook."""
+    skiprows = (list(range(spec.header_row - 1)) + list(range(spec.header_row, spec.first_data_row - 1)))
+    return pd.read_excel(
+        file,
+        spec.sheet,
+        header=0,
+        usecols=spec.cols,
+        skiprows=skiprows,
+        index_col=0,
+        nrows=nsims,
+    )
+
+def dfs_from_excel(
+    file: str,
+    nsims: int = 44,
+    blocks: dict[str, _BlockSpec] = DEFAULT_BLOCKS,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Read the 5 simulation tables (config, timings, pressurant, ox, fuel)."""
+    return (
+        _read_block(file, blocks["cfg"], nsims),
+        _read_block(file, blocks["timings"], nsims),
+        _read_block(file, blocks["pressurant"], nsims),
+        _read_block(file, blocks["oxidizer"], nsims),
+        _read_block(file, blocks["fuel"], nsims),
+    )
+
+# --- HELPERS --- 
+def _get_or_default(d: dict, key: str, default: float) -> float:
+    val = d.get(key, default)
+    return default if pd.isna(val) else val
+
+# --- INPUT DATA CLASS --- 
 @dataclass
 class Input:
     # General
@@ -160,168 +140,167 @@ class Input:
     t_derating:float                        # [s], time at which constant thrust stops and derating starts
     t_shutdown:float                        # [s], time at which engine stops delivering thrust
 
+    # ---- Field-to-Excel-column mappings ----
+    # Each entry: python_attr_name -> (excel_column_header, default_if_missing).
+    # The defaults are Firehorn 1 reference values.
+    _FIELDS_CFG = {
+        "m_dry":          ("Dry mass [kg]",       84.4),
+        "Thrust":         ("Nominal Thrust [N]",  6308),
+        "ISP":            ("ISP [s]",             198),
+        "OF_ratio":       ("core O/F [-]",        1.463),
+        "ramp_up_time":   ("Ramp up time [s]",    0.361),
+        "ramp_down_time": ("Ramp down time [s]",  0.2),
+        "Total_impulse":  ("Total impulse [Ns]",  36167),
+        "hold_time":      ("Hold",                300),
+    }
+ 
+    _FIELDS_TIMINGS = {
+        "prechill_time":   ("prechill_time",   0.2),
+        "ignition_delay":  ("ignition_delay", -0.05),
+        "cutoff_time":     ("cutoff_time",     0.025),
+    }
+ 
+    _FIELDS_PRESSURANT = {
+        "m_n2_copv": ("m_n2_copv", 2.605),
+    }
+ 
+    _FIELDS_OXIDIZER = {
+        "rho_ox":                       ("rho_ox",          1154),
+        "mass_flow_rate_lox_boil_off":  ("mf_ox_boil_off",  0.001),
+        "mass_flow_rate_lox_ignition":  ("mf_ox_ignition",  4.313),
+        "mass_flow_rate_lox_prechill":  ("mf_ox_prechill",  4.313),
+        "mass_flow_rate_lox_burn":      ("mf_ox_burn",      1.879),
+        "m_ox_end":                     ("m_ox_end",        2.67),
+    }
+ 
+    _FIELDS_FUEL = {
+        "rho_fuel":                         ("rho_fuel",          810),
+        "fraction_film_cooling":            ("frac_film_cooling", 0.0733),
+        "mass_flow_rate_ethanol_ignition":  ("mf_fuel_ignition",  0),
+        "m_fuel_delay":                     ("m_fuel_delay",      0),
+        "m_fuel_end":                       ("m_fuel_end",        0.527),
+    }
+    
     def __init__(
-            self,
-            cfg:dict[str,float] = {},
-            bgt_timings:dict[str,float] = {},
-            bgt_pressurant:dict[str,float] = {},
-            bgt_oxidizer:dict[str,float] = {},
-            bgt_fuel:dict[str,float] = {}
-        ) -> None:
+        self,
+        cfg: dict[str, float] = {},
+        bgt_timings: dict[str, float] = {},
+        bgt_pressurant: dict[str, float] = {},
+        bgt_oxidizer: dict[str, float] = {},
+        bgt_fuel: dict[str, float] = {},
+    ) -> None:
+        """Build an Input from the 5 input dictionaries.
+ 
+        Each dict is one row from the corresponding DataFrame returned by
+        dfs_from_excel(). Missing or NaN values are replaced with Firehorn 1
+        reference defaults (see _FIELDS_* dicts).
         """
-        Parameters:
-        - cfg:             Config Configurations table
-        - bgt_timings:     Budget Timings table
-        - bgt_pressurant:  Budget Pressurant table
-        - bgt_oxidizer:    Budget Oxidizer table
-        - bgt_fuel:        Budget Fuel table
-        - 
-        Default values are taken from Firehorn 1.
-        """
-        # Constants
-        ## General
+        self._set_constants()
+        self._read_from_dicts(cfg, bgt_timings, bgt_pressurant, bgt_oxidizer, bgt_fuel)
+        self._compute_derived()
+ 
+    # ----- Init helpers -----
+    def _set_constants(self) -> None:
+        """Set values that don't depend on the simulation row."""
+        # General
         self.Version = "CH"
         self.savefiles = True
         self.N_points = 1000
         self.run_environment = True
         self.write_to_file = False
         self.out_filename = "output_CH.csv"
-        
-        ## Propellant tanks geometry
+ 
+        # Propellant tank geometry
         self.r_int = 0.115
         self.h_cyl = 0.3851008075
         self.h_cap = 0.05
-
-        ## Hold-down
-        ### Geometry
+ 
+        # Hold-down geometry
         self.alpha = 6
         self.beta = 6
         self.l_rail = 11.65
-        ### Other
+ 
+        # Hold-down other
         self.g = 9.81
         self.F_HD_break = 3300
         self.mu = 0.5
         self.m_additions = 0
-
-        # Values read from excel
-        ## configurations
-        self.m_dry = cfg.get("Dry mass [kg]",84.4)
-        if np.isnan(self.m_dry):
-            self.m_dry = 84.4
-        self.Thrust = cfg.get("Nominal Thrust [N]",6308)
-        if np.isnan(self.Thrust):
-            self.Thrust = 6308
-        self.ISP = cfg.get("ISP [s]",198)
-        if np.isnan(self.ISP):
-            self.ISP = 198
-        self.OF_ratio = cfg.get("core O/F [-]",1.463)
-        if np.isnan(self.OF_ratio):
-            self.OF_ratio = 1.463
-        self.ramp_up_time = cfg.get("Ramp up time [s]",0.361)
-        if np.isnan(self.ramp_up_time):
-            self.ramp_up_time = 0.361
-        self.ramp_down_time = cfg.get("Ramp down time [s]",0.2)
-        if np.isnan(self.ramp_down_time):
-            self.ramp_down_time = 0.2
-        self.Total_impulse = cfg.get("Total impulse [Ns]",36167)
-        if np.isnan(self.Total_impulse):
-            self.Total_impulse = 36167
-        self.hold_time = cfg.get("Hold",300)
-        if np.isnan(self.hold_time):
-            self.hold_time = 300
-        
-        ## budget timings
-        self.prechill_time = bgt_timings.get("prechill_time",0.2)
-        if np.isnan(self.prechill_time):
-            self.prechill_time = 0.2
-        self.ignition_delay = bgt_timings.get("ignition_delay",-0.05)
-        if np.isnan(self.ignition_delay):
-            self.ignition_delay = -0.05
-        self.cutoff_time = bgt_timings.get("cutoff_time",0.025)
-        if np.isnan(self.cutoff_time):
-            self.cutoff_time = 0.025
-
-        ## budget pressurant
-        self.m_n2_copv = bgt_pressurant.get("m_n2_copv",2.605)
-        if np.isnan(self.m_n2_copv):
-            self.m_n2_copv = 2.605
-
-        ## budget oxidizer
-        self.rho_ox = bgt_oxidizer.get("rho_ox",1154)
-        if np.isnan(self.rho_ox):
-            self.rho_ox = 1154
-        self.mass_flow_rate_lox_boil_off = bgt_oxidizer.get("mf_ox_boil_off",0.001)
-        if np.isnan(self.mass_flow_rate_lox_boil_off):
-            self.mass_flow_rate_lox_boil_off = 0.001
-        self.mass_flow_rate_lox_ignition = bgt_oxidizer.get("mf_ox_ignition",4.313)
-        if np.isnan(self.mass_flow_rate_lox_ignition):
-            self.mass_flow_rate_lox_ignition = 4.313
-        self.mass_flow_rate_lox_prechill = bgt_oxidizer.get("mf_ox_prechill",4.313)
-        if np.isnan(self.mass_flow_rate_lox_prechill):
-            self.mass_flow_rate_lox_prechill = 4.313
-        self.mass_flow_rate_lox_burn = bgt_oxidizer.get("mf_ox_burn",1.879)
-        if np.isnan(self.mass_flow_rate_lox_burn):
-            self.mass_flow_rate_lox_burn = 1.879
-        self.m_ox_end = bgt_oxidizer.get("m_ox_end",2.67)
-        if np.isnan(self.m_ox_end):
-            self.m_ox_end = 2.67
-        
-        ## budget fuel
-        self.rho_fuel = bgt_fuel.get("rho_fuel",810)
-        if np.isnan(self.rho_fuel):
-            self.rho_fuel = 810
-        self.fraction_film_cooling = bgt_fuel.get("frac_film_cooling",0.0733)
-        if np.isnan(self.fraction_film_cooling):
-            self.fraction_film_cooling = 0.0733
-        self.mass_flow_rate_ethanol_ignition = bgt_fuel.get("mf_fuel_ignition",0)
-        if np.isnan(self.mass_flow_rate_ethanol_ignition):
-            self.mass_flow_rate_ethanol_ignition = 0
-        self.m_fuel_delay = bgt_fuel.get("m_fuel_delay",0)
-        if np.isnan(self.m_fuel_delay):
-            self.m_fuel_delay = 0
-        self.m_fuel_end = bgt_fuel.get("m_fuel_end",0.527)
-        if np.isnan(self.m_fuel_end):
-            self.m_fuel_end = 0.527
-
-        # Computed values
-        ## Propellant masses
-        ### General
+ 
+    def _read_from_dicts(
+        self,
+        cfg: dict, timings: dict, pressurant: dict, oxidizer: dict, fuel: dict,
+    ) -> None:
+        """Pull each field from the appropriate input dict, applying defaults."""
+        for source, mapping in (
+            (cfg,        self._FIELDS_CFG),
+            (timings,    self._FIELDS_TIMINGS),
+            (pressurant, self._FIELDS_PRESSURANT),
+            (oxidizer,   self._FIELDS_OXIDIZER),
+            (fuel,       self._FIELDS_FUEL),
+        ):
+            for attr_name, (excel_key, default) in mapping.items():
+                setattr(self, attr_name, _get_or_default(source, excel_key, default))
+ 
+    def _compute_derived(self) -> None:
+        """Compute values derived from the raw inputs."""
+        # General mass flow / burn time
         self.mass_flow_rate = self.Thrust / (self.ISP * self.g)
         self.burn_time = self.Total_impulse / self.Thrust
         self.propellant_mass = self.mass_flow_rate * self.burn_time
-        ### Fuel (ethanol) mass flow rates
+ 
+        # Fuel (ethanol) mass flow rates
         self.mass_flow_rate_ethanol = self.mass_flow_rate / (1 + self.OF_ratio)
-        self.mass_flow_rate_film_cooling = self.mass_flow_rate_ethanol * self.fraction_film_cooling
-        self.mass_flow_rate_ethanol_burn = self.mass_flow_rate_ethanol + self.mass_flow_rate_film_cooling
-        ### Oxidizer (lox) mass flow rates
-        self.mass_flow_rate_lox_burn = self.mass_flow_rate / (1 + 1/self.OF_ratio)
-        ### Fuel (ethanol) masses
+        self.mass_flow_rate_film_cooling = (
+            self.mass_flow_rate_ethanol * self.fraction_film_cooling
+        )
+        self.mass_flow_rate_ethanol_burn = (
+            self.mass_flow_rate_ethanol + self.mass_flow_rate_film_cooling
+        )
+ 
+        # Oxidizer (LOX) mass flow rate during burn
+        self.mass_flow_rate_lox_burn = self.mass_flow_rate / (1 + 1 / self.OF_ratio)
+ 
+        # Fuel masses
         self.m_fuel_cutoff = self.mass_flow_rate_ethanol_burn * self.cutoff_time
         self.m_fuel_burn = self.mass_flow_rate_ethanol_burn * self.burn_time
+        # m_fuel_end already includes the fixed volume; we add the cutoff residual.
+        # (The residual stays in the tank during flight and is technically used at
+        # the end of the burn without producing thrust; we accept the extra mass
+        # for the recovery phase.)
         self.m_fuel_end += self.m_fuel_cutoff
         self.m_fuel_total = self.m_fuel_delay + self.m_fuel_burn + self.m_fuel_end
-        ### Oxidizer (lox) masses
+ 
+        # Oxidizer masses
         self.m_ox_boil_off = self.mass_flow_rate_lox_boil_off * self.hold_time
         self.m_ox_prechill = self.mass_flow_rate_lox_prechill * self.prechill_time
         self.m_ox_delay = self.mass_flow_rate_lox_ignition * abs(self.ignition_delay)
         self.m_ox_burn = self.mass_flow_rate_lox_burn * self.burn_time
-        self.m_ox_total = self.m_ox_boil_off + self.m_ox_prechill + self.m_ox_delay + self.m_ox_burn + self.m_ox_end
-        ### Wet mass
-        self.wet_mass = self.m_dry + self.m_fuel_total + self.m_ox_total + 2*self.m_n2_copv
-
-        ## Thrust curve
-        ### Force
+        self.m_ox_total = (
+            self.m_ox_boil_off
+            + self.m_ox_prechill
+            + self.m_ox_delay
+            + self.m_ox_burn
+            + self.m_ox_end
+        )
+ 
+        # Wet mass on the pad
+        self.wet_mass = (
+            self.m_dry + self.m_fuel_total + self.m_ox_total + 2 * self.m_n2_copv
+        )
+ 
+        # Thrust curve forces (currently flat — peak thrust through the burn)
         self.F_full_thrust = self.Thrust
         self.F_derating = self.Thrust
         self.F_ramp_down = self.Thrust
         self.F_shutdown = 0
-        ### Timings
+ 
+        # Thrust curve timings
         self.t_full_thrust = self.ramp_up_time
         self.t_ramp_down = self.burn_time
         self.t_derating = self.t_ramp_down - 0.001
         self.t_shutdown = self.t_ramp_down + self.ramp_down_time
-        return
-    
+
+#--- PUBLIC METHODS ---
     def display(self) -> None:
         for field in fields(self):
             field_name = field.name
@@ -349,6 +328,8 @@ class Input:
         bgt_pressurant = dfs[2].iloc[row].to_dict()
         bgt_oxidizer = dfs[3].iloc[row].to_dict()
         bgt_fuel = dfs[4].iloc[row].to_dict()
-        # Too lazy to typecheck, we trust the user
+        # Too lazy to typecheck, we trust the user 
         return cls(cfg,bgt_timings,bgt_pressurant,bgt_oxidizer,bgt_fuel)  # type: ignore
+    
+
 
