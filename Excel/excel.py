@@ -1,5 +1,76 @@
-from dataclasses import dataclass
+from __future__ import annotations
+from dataclasses import dataclass, fields
 import numpy as np
+from typing import List, Tuple
+import pandas as pd
+
+def dfs_from_excel(
+    file:str,
+    nsims:int = 44,
+    sheet_cfg:str = "Config",
+    head_config:int = 1,
+    cols_config:str = "B:M",
+    row1_config:int = 3,
+    sheet_bgt:str = "Budget",
+    head_timings:int = 2,
+    cols_timings:str = "B:I",
+    row1_timings:int = 5,
+    head_pressurant:int = 55,
+    cols_pressurant:str = "B:F",
+    row1_pressurant:int = 58,
+    head_oxidizer:int = 108,
+    cols_oxidizer:str = "B:V",
+    row1_oxidizer:int = 111,
+    head_fuel:int = 161,
+    cols_fuel:str = "B:V",
+    row1_fuel:int = 164
+    ) -> Tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame]:
+    df_cfg = pd.read_excel(
+        file,
+        sheet_cfg,
+        header=0,
+        usecols=cols_config,
+        skiprows=list(range(head_config-1)) + list(range(head_config,row1_config-1)),
+        index_col=0,
+        nrows=nsims
+        )
+    df_bgt_timings = pd.read_excel(
+        file,
+        sheet_bgt,
+        header=0,
+        usecols=cols_timings,
+        skiprows=list(range(head_timings-1)) + list(range(head_timings,row1_timings-1)),
+        index_col=0,
+        nrows=nsims
+        )
+    df_bgt_pressurant = pd.read_excel(
+        file,
+        sheet_bgt,
+        header=0,
+        usecols=cols_pressurant,
+        skiprows=list(range(head_pressurant-1)) + list(range(head_pressurant,row1_pressurant-1)),
+        index_col=0,
+        nrows=nsims
+        )
+    df_bgt_oxidizer = pd.read_excel(
+        file,
+        sheet_bgt,
+        header=0,
+        usecols=cols_oxidizer,
+        skiprows=list(range(head_oxidizer-1)) + list(range(head_oxidizer,row1_oxidizer-1)),
+        index_col=0,
+        nrows=nsims
+        )
+    df_bgt_fuel = pd.read_excel(
+        file,
+        sheet_bgt,
+        header=0,
+        usecols=cols_fuel,
+        skiprows=list(range(head_fuel-1)) + list(range(head_fuel,row1_fuel-1)),
+        index_col=0,
+        nrows=nsims
+        )
+    return df_cfg,df_bgt_timings,df_bgt_pressurant,df_bgt_oxidizer,df_bgt_fuel
 
 @dataclass
 class Input:
@@ -91,11 +162,11 @@ class Input:
 
     def __init__(
             self,
-            cfg:dict[str,float],
-            bgt_timings:dict[str,float],
-            bgt_pressurant:dict[str,float],
-            bgt_oxidizer:dict[str,float],
-            bgt_fuel:dict[str,float]
+            cfg:dict[str,float] = {},
+            bgt_timings:dict[str,float] = {},
+            bgt_pressurant:dict[str,float] = {},
+            bgt_oxidizer:dict[str,float] = {},
+            bgt_fuel:dict[str,float] = {}
         ) -> None:
         """
         Parameters:
@@ -179,16 +250,16 @@ class Input:
         self.rho_ox = bgt_oxidizer.get("rho_ox",1154)
         if np.isnan(self.rho_ox):
             self.rho_ox = 1154
-        self.mass_flow_rate_lox_boil_off = bgt_oxidizer.get("m_ox_boil_off",0.001)
+        self.mass_flow_rate_lox_boil_off = bgt_oxidizer.get("mf_ox_boil_off",0.001)
         if np.isnan(self.mass_flow_rate_lox_boil_off):
             self.mass_flow_rate_lox_boil_off = 0.001
-        self.mass_flow_rate_lox_ignition = bgt_oxidizer.get("m_ox_ignition",4.313)
+        self.mass_flow_rate_lox_ignition = bgt_oxidizer.get("mf_ox_ignition",4.313)
         if np.isnan(self.mass_flow_rate_lox_ignition):
             self.mass_flow_rate_lox_ignition = 4.313
-        self.mass_flow_rate_lox_prechill = bgt_oxidizer.get("m_ox_prechill",4.313)
+        self.mass_flow_rate_lox_prechill = bgt_oxidizer.get("mf_ox_prechill",4.313)
         if np.isnan(self.mass_flow_rate_lox_prechill):
             self.mass_flow_rate_lox_prechill = 4.313
-        self.mass_flow_rate_lox_burn = bgt_oxidizer.get("m_ox_burn",1.879)
+        self.mass_flow_rate_lox_burn = bgt_oxidizer.get("mf_ox_burn",1.879)
         if np.isnan(self.mass_flow_rate_lox_burn):
             self.mass_flow_rate_lox_burn = 1.879
         self.m_ox_end = bgt_oxidizer.get("m_ox_end",2.67)
@@ -202,7 +273,7 @@ class Input:
         self.fraction_film_cooling = bgt_fuel.get("frac_film_cooling",0.0733)
         if np.isnan(self.fraction_film_cooling):
             self.fraction_film_cooling = 0.0733
-        self.mass_flow_rate_ethanol_ignition = bgt_fuel.get("m_fuel_ignition",0)
+        self.mass_flow_rate_ethanol_ignition = bgt_fuel.get("mf_fuel_ignition",0)
         if np.isnan(self.mass_flow_rate_ethanol_ignition):
             self.mass_flow_rate_ethanol_ignition = 0
         self.m_fuel_delay = bgt_fuel.get("m_fuel_delay",0)
@@ -249,3 +320,35 @@ class Input:
         self.t_ramp_down = self.burn_time
         self.t_derating = self.t_ramp_down - 0.001
         self.t_shutdown = self.t_ramp_down + self.ramp_down_time
+        return
+    
+    def display(self) -> None:
+        for field in fields(self):
+            field_name = field.name
+            field_value = getattr(self, field_name)
+            print(f"{field_name}: {field_value}")
+        return
+    
+    @classmethod
+    def from_dfs(
+        cls,
+        dfs:Tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame],
+        row:int
+        ) -> Input:
+        """
+        Idea: call this function with the ouput of `dfs_from_excel()` defined above,
+            and the number of the simulation, 0-indexed.
+            This makes it easier to iterate over all simulations.
+
+        Note: `row` does not correspond to the row number from the excel file,
+            but to the row number of the dataframe.
+            This is the number of the corresponding simulation, 0-indexed.
+        """
+        cfg = dfs[0].iloc[row].to_dict()
+        bgt_timings = dfs[1].iloc[row].to_dict()
+        bgt_pressurant = dfs[2].iloc[row].to_dict()
+        bgt_oxidizer = dfs[3].iloc[row].to_dict()
+        bgt_fuel = dfs[4].iloc[row].to_dict()
+        # Too lazy to typecheck, we trust the user
+        return cls(cfg,bgt_timings,bgt_pressurant,bgt_oxidizer,bgt_fuel)  # type: ignore
+
