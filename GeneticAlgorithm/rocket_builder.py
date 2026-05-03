@@ -66,7 +66,7 @@ class RocketBuilder:
         self.dry_mass = params.get('fin_span', 2.59)
         self.fin_span = params.get('fin_span', 0.3)
         self.fin_root_chord = params.get('fin_root_chord', 0.671)
-        self.propellant_mass = params['propellant_mass']
+        self.propellant_mass = params.get('propellant_mass', 8.115)
         self.burn_time = params.get('fin_root_chord', 6.1604)
         self.motor_type = params.get('motor_type', 'solid')
         
