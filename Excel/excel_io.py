@@ -7,28 +7,46 @@ import pandas as pd
 @dataclass(frozen=True)
 class _BlockSpec:
     sheet: str
-    cols: str        # Excel column range, e.g. "B:M"
-    header_row: int  # 1-indexed row containing the column headers
-    first_data_row: int  # 1-indexed row of the first data row
- 
+    cols: str                            # Excel column range, e.g. "B:N"
+    first_data_row: int                  # 1-indexed Excel row of Firehorn 1 (row 0 of the DataFrame)
+    aux_rows: tuple[int, ...] = ()       # 1-indexed Excel rows to drop between Firehorn 1 and the first sim row
+
+# Layout reference (input workbook):
+#   Config:  R2 = headers, R3 = Firehorn 1, R4..R49 = CONFIG1..CONFIG46 in column C
+#   Budget:  each block has pretty headers / sub-headers / Firehorn 1 / aux row / sim rows
+# We read positionally — column letters are translated to integer offsets within `cols`.
 DEFAULT_BLOCKS: dict[str, _BlockSpec] = {
-    "cfg":        _BlockSpec(sheet="Config", cols="B:M", header_row=1,   first_data_row=3),
-    "timings":    _BlockSpec(sheet="Budget", cols="B:I", header_row=2,   first_data_row=5),
-    "pressurant": _BlockSpec(sheet="Budget", cols="B:F", header_row=55,  first_data_row=58),
-    "oxidizer":   _BlockSpec(sheet="Budget", cols="B:V", header_row=108, first_data_row=111),
-    "fuel":       _BlockSpec(sheet="Budget", cols="B:V", header_row=161, first_data_row=164),
+    "cfg":        _BlockSpec(sheet="Config", cols="B:N", first_data_row=3),
+    "timings":    _BlockSpec(sheet="Budget", cols="B:J", first_data_row=4,   aux_rows=(5,)),
+    "pressurant": _BlockSpec(sheet="Budget", cols="B:G", first_data_row=57,  aux_rows=(58,)),
+    "oxidizer":   _BlockSpec(sheet="Budget", cols="B:V", first_data_row=110, aux_rows=(111,)),
+    "fuel":       _BlockSpec(sheet="Budget", cols="B:V", first_data_row=163, aux_rows=(164,)),
 }
 
+# Column C of every block holds the per-row config_id (e.g. "2026_C_PR_B3_CONFIG1").
+_CONFIG_ID_COL = "C"
+
+def _col_to_num(letter: str) -> int:
+    """'A' -> 1, 'B' -> 2, ..., 'Z' -> 26, 'AA' -> 27, ..."""
+    n = 0
+    for c in letter.upper():
+        n = n * 26 + ord(c) - ord('A') + 1
+    return n
+
+def _offset(letter: str, cols: str) -> int:
+    """0-indexed position of `letter` within an Excel range like 'B:N'."""
+    start = cols.split(":")[0]
+    return _col_to_num(letter) - _col_to_num(start)
+
 def _read_block(file: str, spec: _BlockSpec, nsims: int) -> pd.DataFrame:
-    """Read one rectangular table from the workbook."""
-    skiprows = (list(range(spec.header_row - 1)) + list(range(spec.header_row, spec.first_data_row - 1)))
+    """Read one rectangular table from the workbook (no header parsing — positional)."""
+    skiprows = list(range(spec.first_data_row - 1)) + [r - 1 for r in spec.aux_rows]
     return pd.read_excel(
         file,
         spec.sheet,
-        header=0,
+        header=None,
         usecols=spec.cols,
         skiprows=skiprows,
-        index_col=0,
         nrows=nsims,
     )
 
@@ -46,9 +64,12 @@ def dfs_from_excel(
         _read_block(file, blocks["fuel"], nsims),
     )
 
-# --- HELPERS --- 
-def _get_or_default(d: dict, key: str, default: float) -> float:
-    val = d.get(key, default)
+# --- HELPERS ---
+def _get_or_default(row: pd.Series | None, idx: int, default: float) -> float:
+    """Return row.iloc[idx], falling back to `default` if row is None or value is NaN."""
+    if row is None:
+        return default
+    val = row.iloc[idx]
     return default if pd.isna(val) else val
 
 # --- INPUT DATA CLASS --- 
@@ -141,67 +162,73 @@ class Input:
     t_shutdown:float                        # [s], time at which engine stops delivering thrust
 
     # ---- Field-to-Excel-column mappings ----
-    # Each entry: python_attr_name -> (excel_column_header, default_if_missing).
-    # The defaults are Firehorn 1 reference values.
+    # Each entry: python_attr_name -> (excel_column_letter, default_if_missing).
+    # Letters are absolute Excel columns; resolved positionally inside `cols`.
+    # Defaults are Firehorn 1 reference values, used when the cell is blank/NaN.
     _FIELDS_CFG = {
-        "m_dry":          ("Dry mass [kg]",       84.4),
-        "Thrust":         ("Nominal Thrust [N]",  6308),
-        "ISP":            ("ISP [s]",             198),
-        "OF_ratio":       ("core O/F [-]",        1.463),
-        "ramp_up_time":   ("Ramp up time [s]",    0.361),
-        "ramp_down_time": ("Ramp down time [s]",  0.2),
-        "Total_impulse":  ("Total impulse [Ns]",  36167),
-        "hold_time":      ("Hold",                300),
+        "m_dry":          ("D", 84.4),    # Dry mass [kg]
+        "Thrust":         ("E", 6308),    # Nominal Thrust [N]  (header in sheet is misspelled "Thurst")
+        "ISP":            ("F", 198),     # ISP [s]
+        "OF_ratio":       ("G", 1.463),   # core O/F [-]
+        "ramp_up_time":   ("K", 0.361),   # Ramp up time [s]
+        "ramp_down_time": ("L", 0.171),   # Ramp down time [s]
+        "Total_impulse":  ("N", 36167),   # Total impulse [Ns]
     }
- 
+
     _FIELDS_TIMINGS = {
-        "prechill_time":   ("prechill_time",   0.2),
-        "ignition_delay":  ("ignition_delay", -0.05),
-        "cutoff_time":     ("cutoff_time",     0.025),
+        "hold_time":       ("D", 300),    # Hold / duration
+        "prechill_time":   ("E", 0.2),    # Prechill / duration
+        "ignition_delay":  ("F", -0.05),  # Ignition / ignition_delay
+        "cutoff_time":     ("I", 0.025),  # Cutoff / delay
     }
- 
+
     _FIELDS_PRESSURANT = {
-        "m_n2_copv": ("m_n2_copv", 2.605),
+        "m_n2_copv": ("F", 2.605),        # Mass [kg] / m_n2_copv
     }
- 
+
+    # mass_flow_rate_lox_burn is intentionally not read here — it is overwritten
+    # in _compute_derived (= mass_flow_rate / (1 + 1/OF_ratio)).
     _FIELDS_OXIDIZER = {
-        "rho_ox":                       ("rho_ox",          1154),
-        "mass_flow_rate_lox_boil_off":  ("mf_ox_boil_off",  0.001),
-        "mass_flow_rate_lox_ignition":  ("mf_ox_ignition",  4.313),
-        "mass_flow_rate_lox_prechill":  ("mf_ox_prechill",  4.313),
-        "mass_flow_rate_lox_burn":      ("mf_ox_burn",      1.879),
-        "m_ox_end":                     ("m_ox_end",        2.67),
+        "rho_ox":                       ("D", 1154),   # ρ_ox
+        "mass_flow_rate_lox_boil_off":  ("H", 0.001),  # ṁ_ox_boil-off
+        "mass_flow_rate_lox_ignition":  ("I", 4.313),  # ṁ_ox_ignition
+        "mass_flow_rate_lox_prechill":  ("J", 4.313),  # ṁ_ox_prechill
+        "m_ox_end":                     ("R", 2.67),   # m_ox_end
     }
- 
+
     _FIELDS_FUEL = {
-        "rho_fuel":                         ("rho_fuel",          810),
-        "fraction_film_cooling":            ("frac_film_cooling", 0.0733),
-        "mass_flow_rate_ethanol_ignition":  ("mf_fuel_ignition",  0),
-        "m_fuel_delay":                     ("m_fuel_delay",      0),
-        "m_fuel_end":                       ("m_fuel_end",        0.527),
+        "rho_fuel":                         ("D", 810),    # ρ_fuel
+        "fraction_film_cooling":            ("G", 0.0733), # frac_film_cooling
+        "mass_flow_rate_ethanol_ignition":  ("I", 0),      # ṁ_fuel_ignition
+        "m_fuel_delay":                     ("O", 0),      # m_fuel_delay
+        "m_fuel_end":                       ("R", 0.527),  # m_fuel_end
     }
     
     def __init__(
         self,
-        cfg: dict[str, float] = {},
-        bgt_timings: dict[str, float] = {},
-        bgt_pressurant: dict[str, float] = {},
-        bgt_oxidizer: dict[str, float] = {},
-        bgt_fuel: dict[str, float] = {},
+        cfg: pd.Series | None = None,
+        bgt_timings: pd.Series | None = None,
+        bgt_pressurant: pd.Series | None = None,
+        bgt_oxidizer: pd.Series | None = None,
+        bgt_fuel: pd.Series | None = None,
     ) -> None:
-        """Build an Input from the 5 input dictionaries.
- 
-        Each dict is one row from the corresponding DataFrame returned by
+        """Build an Input from the 5 row Series (one row per block).
+
+        Each Series is one row from the corresponding DataFrame returned by
         dfs_from_excel(). Missing or NaN values are replaced with Firehorn 1
-        reference defaults (see _FIELDS_* dicts).
+        reference defaults (see _FIELDS_* dicts). Pass None to use defaults
+        for an entire block.
         """
         self._set_constants()
-        self._read_from_dicts(cfg, bgt_timings, bgt_pressurant, bgt_oxidizer, bgt_fuel)
+        self._read_from_rows(cfg, bgt_timings, bgt_pressurant, bgt_oxidizer, bgt_fuel)
         self._compute_derived()
  
     # ----- Init helpers -----
     def _set_constants(self) -> None:
         """Set values that don't depend on the simulation row."""
+        # Identity (overridden by from_dfs when built from a spreadsheet row)
+        self.config_id = None
+
         # General
         self.Version = "CH"
         self.savefiles = True
@@ -226,20 +253,25 @@ class Input:
         self.mu = 0.5
         self.m_additions = 0
  
-    def _read_from_dicts(
+    def _read_from_rows(
         self,
-        cfg: dict, timings: dict, pressurant: dict, oxidizer: dict, fuel: dict,
+        cfg: pd.Series | None,
+        timings: pd.Series | None,
+        pressurant: pd.Series | None,
+        oxidizer: pd.Series | None,
+        fuel: pd.Series | None,
     ) -> None:
-        """Pull each field from the appropriate input dict, applying defaults."""
-        for source, mapping in (
-            (cfg,        self._FIELDS_CFG),
-            (timings,    self._FIELDS_TIMINGS),
-            (pressurant, self._FIELDS_PRESSURANT),
-            (oxidizer,   self._FIELDS_OXIDIZER),
-            (fuel,       self._FIELDS_FUEL),
+        """Pull each field from the appropriate row by Excel column letter."""
+        for row, spec, mapping in (
+            (cfg,        DEFAULT_BLOCKS["cfg"],        self._FIELDS_CFG),
+            (timings,    DEFAULT_BLOCKS["timings"],    self._FIELDS_TIMINGS),
+            (pressurant, DEFAULT_BLOCKS["pressurant"], self._FIELDS_PRESSURANT),
+            (oxidizer,   DEFAULT_BLOCKS["oxidizer"],   self._FIELDS_OXIDIZER),
+            (fuel,       DEFAULT_BLOCKS["fuel"],       self._FIELDS_FUEL),
         ):
-            for attr_name, (excel_key, default) in mapping.items():
-                setattr(self, attr_name, _get_or_default(source, excel_key, default))
+            for attr_name, (col_letter, default) in mapping.items():
+                idx = _offset(col_letter, spec.cols)
+                setattr(self, attr_name, _get_or_default(row, idx, default))
  
     def _compute_derived(self) -> None:
         """Compute values derived from the raw inputs."""
@@ -311,25 +343,27 @@ class Input:
     @classmethod
     def from_dfs(
         cls,
-        dfs:Tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame],
-        row:int
-        ) -> Input:
-        """
-        Idea: call this function with the ouput of `dfs_from_excel()` defined above,
-            and the number of the simulation, 0-indexed.
-            This makes it easier to iterate over all simulations.
+        dfs: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame],
+        row: int,
+    ) -> Input:
+        """Build an Input from the 5 DataFrames returned by `dfs_from_excel()`.
 
-        Note: `row` does not correspond to the row number from the excel file,
-            but to the row number of the dataframe.
-            This is the number of the corresponding simulation, 0-indexed.
+        `row` is the 0-indexed DataFrame row, NOT the Excel row.
+        Row 0 is Firehorn 1 (reference data, no config_id).
+        Rows 1+ are the simulation configs (CONFIG1, CONFIG2, ...).
+
+        After construction, `instance.config_id` holds the per-row config id
+        from column C of the Config sheet, or None for the Firehorn 1 row.
         """
-        cfg = dfs[0].iloc[row].to_dict()
-        bgt_timings = dfs[1].iloc[row].to_dict()
-        bgt_pressurant = dfs[2].iloc[row].to_dict()
-        bgt_oxidizer = dfs[3].iloc[row].to_dict()
-        bgt_fuel = dfs[4].iloc[row].to_dict()
-        # Too lazy to typecheck, we trust the user 
-        return cls(cfg,bgt_timings,bgt_pressurant,bgt_oxidizer,bgt_fuel)  # type: ignore
+        rows = [df.iloc[row] for df in dfs]
+        instance = cls(*rows)
+        cfg_spec = DEFAULT_BLOCKS["cfg"]
+        cid = rows[0].iloc[_offset(_CONFIG_ID_COL, cfg_spec.cols)]
+        instance.config_id = None if pd.isna(cid) else str(cid)
+        return instance
+    
+
+
     
 
 
