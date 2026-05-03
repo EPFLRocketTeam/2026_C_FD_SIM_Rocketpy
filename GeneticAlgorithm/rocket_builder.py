@@ -27,7 +27,7 @@ class RocketBuilder:
     GRAIN_COUNT = 4
 
     # solid motor properties
-    LIQUID_MOTOR_DRY_MASS = 8.0         # kg
+    LIQUID_MOTOR_DRY_MASS = 1e-5         # kg
     LIQUID_NOZZLE_RADIUS = 0.04946         # m
     # cylindrical tank
     TANK_RADIUS = 0.115                  # m
@@ -63,11 +63,11 @@ class RocketBuilder:
         self.rocket = None
         self.motor = None
         
-        self.dry_mass = params.get('fin_span', 2.59)
+        self.dry_mass = params.get('dry_mass', 108)
         self.fin_span = params.get('fin_span', 0.3)
         self.fin_root_chord = params.get('fin_root_chord', 0.671)
         self.propellant_mass = params.get('propellant_mass', 8.115)
-        self.burn_time = params.get('fin_root_chord', 6.1604)
+        self.burn_time = params.get('burn_time', 6.1604)
         self.motor_type = params.get('motor_type', 'solid')
         
         self.body_length = params.get('body_length', 5.81755)
@@ -181,7 +181,7 @@ class RocketBuilder:
         pressure_tank_2 = MassBasedTank(
             name="Pressure Tank 2",
             geometry=press_tank_geom,
-            liquid_mass=2.5,
+            liquid_mass=0.0,
             gas_mass=linear_mass,
             flux_time=self.burn_time,
             gas=pressurizing_gas,
@@ -193,7 +193,7 @@ class RocketBuilder:
             dry_mass=self.LIQUID_MOTOR_DRY_MASS,
             dry_inertia=(1e-5,1e-5,1e-5),
             nozzle_radius=self.LIQUID_NOZZLE_RADIUS,
-            center_of_dry_mass_position=3.7,
+            center_of_dry_mass_position=1e-5,
             nozzle_position=0,
             burn_time=self.burn_time,
             coordinate_system_orientation="nozzle_to_combustion_chamber",
