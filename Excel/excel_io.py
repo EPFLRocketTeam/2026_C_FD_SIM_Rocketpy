@@ -1,8 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, fields
-import numpy as np
-from typing import Tuple
 import pandas as pd
+import numpy as np
 
 @dataclass(frozen=True)
 class _BlockSpec:
@@ -36,7 +35,7 @@ def dfs_from_excel(
     file: str,
     nsims: int = 44,
     blocks: dict[str, _BlockSpec] = DEFAULT_BLOCKS,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Read the 5 simulation tables (config, timings, pressurant, ox, fuel)."""
     return (
         _read_block(file, blocks["cfg"], nsims),
@@ -47,7 +46,7 @@ def dfs_from_excel(
     )
 
 # --- HELPERS --- 
-def _get_or_default(d: dict, key: str, default: float) -> float:
+def _get_or_default(d: dict, key: str, default: float|bool|str) -> float|bool|str:
     val = d.get(key, default)
     return default if pd.isna(val) else val
 
@@ -143,6 +142,32 @@ class Input:
     # ---- Field-to-Excel-column mappings ----
     # Each entry: python_attr_name -> (excel_column_header, default_if_missing).
     # The defaults are Firehorn 1 reference values.
+    _FIELDS_CONSTANTS:dict[str,tuple[str,float|bool|str]] = {
+        # General
+        "Version":         ("Version",                  "CH"),
+        "savefiles":       ("savefiles",                True),
+        "N_points":        ("number of points",         1000),
+        "run_environment": ("run environment",          True),
+        "write_to_file":   ("write to file",            False),
+        "out_filename":    ("output file",              "output_CH.csv"),
+ 
+        # Propellant tank geometry
+        "r_int":           ("interior radius",          0.115),
+        "h_cyl":           ("cylinder height",          0.3851008075),
+        "h_cap":           ("cap height",               0.05),
+ 
+        # Hold-down geometry
+        "alpha":           ("alpha",                    6),
+        "beta":            ("beta",                     6),
+        "l_rail":          ("rail length",              11.65),
+ 
+        # Hold-down other
+        "g":               ("g",                        9.81),
+        "F_HD_break":      ("hold-down break force",    3300),
+        "mu":              ("button-rail friction",     0.5),
+        "m_additions":     ("mass additions",           0),
+    }
+
     _FIELDS_CFG = {
         "m_dry":          ("Dry mass [kg]",       84.4),
         "Thrust":         ("Nominal Thrust [N]",  6308),
@@ -183,6 +208,7 @@ class Input:
     
     def __init__(
         self,
+        const: dict[str, float|bool|str] = {},
         cfg: dict[str, float] = {},
         bgt_timings: dict[str, float] = {},
         bgt_pressurant: dict[str, float] = {},
@@ -195,48 +221,22 @@ class Input:
         dfs_from_excel(). Missing or NaN values are replaced with Firehorn 1
         reference defaults (see _FIELDS_* dicts).
         """
-        self._set_constants()
-        self._read_from_dicts(cfg, bgt_timings, bgt_pressurant, bgt_oxidizer, bgt_fuel)
+        self._read_from_dicts(const, cfg, bgt_timings, bgt_pressurant, bgt_oxidizer, bgt_fuel)
         self._compute_derived()
  
     # ----- Init helpers -----
-    def _set_constants(self) -> None:
-        """Set values that don't depend on the simulation row."""
-        # General
-        self.Version = "CH"
-        self.savefiles = True
-        self.N_points = 1000
-        self.run_environment = True
-        self.write_to_file = False
-        self.out_filename = "output_CH.csv"
- 
-        # Propellant tank geometry
-        self.r_int = 0.115
-        self.h_cyl = 0.3851008075
-        self.h_cap = 0.05
- 
-        # Hold-down geometry
-        self.alpha = 6
-        self.beta = 6
-        self.l_rail = 11.65
- 
-        # Hold-down other
-        self.g = 9.81
-        self.F_HD_break = 3300
-        self.mu = 0.5
-        self.m_additions = 0
- 
     def _read_from_dicts(
         self,
-        cfg: dict, timings: dict, pressurant: dict, oxidizer: dict, fuel: dict,
+        const:dict, cfg:dict, timings:dict, pressurant:dict, oxidizer:dict, fuel:dict,
     ) -> None:
         """Pull each field from the appropriate input dict, applying defaults."""
         for source, mapping in (
+            (const,      self._FIELDS_CONSTANTS),
             (cfg,        self._FIELDS_CFG),
             (timings,    self._FIELDS_TIMINGS),
             (pressurant, self._FIELDS_PRESSURANT),
             (oxidizer,   self._FIELDS_OXIDIZER),
-            (fuel,       self._FIELDS_FUEL),
+            (fuel,       self._FIELDS_FUEL)
         ):
             for attr_name, (excel_key, default) in mapping.items():
                 setattr(self, attr_name, _get_or_default(source, excel_key, default))
@@ -282,7 +282,10 @@ class Input:
             + self.m_ox_burn
             + self.m_ox_end
         )
- 
+
+        # Dry mass
+        self.m_dry += self.m_additions
+
         # Wet mass on the pad
         self.wet_mass = (
             self.m_dry + self.m_fuel_total + self.m_ox_total + 2 * self.m_n2_copv
@@ -311,7 +314,12 @@ class Input:
     @classmethod
     def from_dfs(
         cls,
-        dfs:Tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame,pd.DataFrame],
+        const:dict[str,float|bool|str],
+        df_cfg:pd.DataFrame,
+        df_timings:pd.DataFrame,
+        df_pressurant:pd.DataFrame,
+        df_oxidizer:pd.DataFrame,
+        df_fuel:pd.DataFrame,
         row:int
         ) -> Input:
         """
@@ -323,13 +331,77 @@ class Input:
             but to the row number of the dataframe.
             This is the number of the corresponding simulation, 0-indexed.
         """
-        cfg = dfs[0].iloc[row].to_dict()
-        bgt_timings = dfs[1].iloc[row].to_dict()
-        bgt_pressurant = dfs[2].iloc[row].to_dict()
-        bgt_oxidizer = dfs[3].iloc[row].to_dict()
-        bgt_fuel = dfs[4].iloc[row].to_dict()
+        cfg = df_cfg.iloc[row].to_dict()
+        timings = df_timings.iloc[row].to_dict()
+        pressurant = df_pressurant.iloc[row].to_dict()
+        oxidizer = df_oxidizer.iloc[row].to_dict()
+        fuel = df_fuel.iloc[row].to_dict()
         # Too lazy to typecheck, we trust the user 
-        return cls(cfg,bgt_timings,bgt_pressurant,bgt_oxidizer,bgt_fuel)  # type: ignore
+        return cls(const,cfg,timings,pressurant,oxidizer,fuel)  # type: ignore
     
+#--- THRUST_RESULTS DATACLASS ---
+@dataclass
+class Thrust_results:
+    t_total:np.ndarray
+    F:np.ndarray
+    total_impulse:float
+    slope_ramp_up:float
+    slope_derating:float
+    slope_shutdown:float
 
+#--- LAUNCH_RESULTS DATACLASS ---
+@dataclass
+class Launch_results:
+    idx_break:int
+    t_break:float
+    t_exit:float
+    v_exit:float
 
+#--- PROPELLANT_RESULTS DATACLASS ---
+@dataclass
+class Propellant_results:
+    # Equivalent heights
+    ## Tank
+    h_eq:float
+    ## Fuel
+    h_fuel_free:float
+    h_fuel_fixed:float
+    h_fuel_total:float
+    ## Ox
+    h_ox_free:float
+    h_ox_fixed:float
+    h_ox_total:float
+
+    # Equivalent volumes
+    ## Tank
+    V_tank_total:float
+    ## Fuel
+    V_fuel_free:float
+    V_fuel_fixed:float
+    V_fuel_total:float
+    ## Oxidizer
+    V_ox_free:float
+    V_ox_fixed:float
+    V_ox_total:float
+
+    # Heights of interest
+    ## Fixed mass (liquid remaining at bottom)
+    z_fuel_fixed_COM:float
+    z_ox_fixed_COM:float
+    ## Free mass bottom position
+    z_fuel_free_bottom:float
+    z_ox_free_bottom:float
+    ## Total mass
+    z_fuel_total_COM:float
+    z_ox_total_COM:float
+
+    z_fuel_total_bottom:float
+    z_ox_total_bottom:float
+
+    # Mass depletion
+    mass_lost_fuel_before_break:float
+    mass_lost_ox_before_break:float
+
+    # Propellant volumes
+    ullage_fuel_m3:np.ndarray
+    ullage_ox_m3:np.ndarray
