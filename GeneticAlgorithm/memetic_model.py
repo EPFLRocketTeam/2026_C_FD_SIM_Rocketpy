@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import copy
+import warnings
 import datetime
 from rocketpy import Environment, Flight
 from rocket_builder import RocketBuilder
