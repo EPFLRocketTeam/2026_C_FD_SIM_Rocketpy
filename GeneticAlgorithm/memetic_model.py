@@ -31,9 +31,12 @@ INTEGER_GENES = ['fin_count']
 TARGET_APOGEE = 3000.0 # m
 HEIGHT_DEVIATION_ALLOWED = 200.0 # m
 
-now = datetime.datetime.now(datetime.timezone.utc)
-env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160, date=(now.year, now.month, now.day, now.hour))
-env.set_atmospheric_model(type="forecast", file="GFS")
+# now = datetime.datetime.now(datetime.timezone.utc)
+# env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160, date=(now.year, now.month, now.day, now.hour))
+# env.set_atmospheric_model(type="forecast", file="GFS")
+
+env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160)
+env.set_atmospheric_model(type="standard_atmosphere")
 
 class DNA:
     def __init__(self, genes=None):
