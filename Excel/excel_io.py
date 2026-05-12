@@ -1,8 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, fields
-import numpy as np
-from typing import Tuple
 import pandas as pd
+import numpy as np
 
 @dataclass(frozen=True)
 class _BlockSpec:
@@ -54,7 +53,7 @@ def dfs_from_excel(
     file: str,
     nsims: int = 44,
     blocks: dict[str, _BlockSpec] = DEFAULT_BLOCKS,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Read the 5 simulation tables (config, timings, pressurant, ox, fuel)."""
     return (
         _read_block(file, blocks["cfg"], nsims),
@@ -165,6 +164,32 @@ class Input:
     # Each entry: python_attr_name -> (excel_column_letter, default_if_missing).
     # Letters are absolute Excel columns; resolved positionally inside `cols`.
     # Defaults are Firehorn 1 reference values, used when the cell is blank/NaN.
+    _FIELDS_CONSTANTS:dict[str,tuple[str,float|bool|str]] = {
+        # General
+        "Version":         ("Version",                  "CH"),
+        "savefiles":       ("savefiles",                True),
+        "N_points":        ("number of points",         1000),
+        "run_environment": ("run environment",          True),
+        "write_to_file":   ("write to file",            False),
+        "out_filename":    ("output file",              "output_CH.csv"),
+ 
+        # Propellant tank geometry
+        "r_int":           ("interior radius",          0.115),
+        "h_cyl":           ("cylinder height",          0.3851008075),
+        "h_cap":           ("cap height",               0.05),
+ 
+        # Hold-down geometry
+        "alpha":           ("alpha",                    6),
+        "beta":            ("beta",                     6),
+        "l_rail":          ("rail length",              11.65),
+ 
+        # Hold-down other
+        "g":               ("g",                        9.81),
+        "F_HD_break":      ("hold-down break force",    3300),
+        "mu":              ("button-rail friction",     0.5),
+        "m_additions":     ("mass additions",           0),
+    }
+
     _FIELDS_CFG = {
         "m_dry":          ("D", 84.4),    # Dry mass [kg]
         "Thrust":         ("E", 6308),    # Nominal Thrust [N]  (header in sheet is misspelled "Thurst")
@@ -314,7 +339,10 @@ class Input:
             + self.m_ox_burn
             + self.m_ox_end
         )
- 
+
+        # Dry mass
+        self.m_dry += self.m_additions
+
         # Wet mass on the pad
         self.wet_mass = (
             self.m_dry + self.m_fuel_total + self.m_ox_total + 2 * self.m_n2_copv
