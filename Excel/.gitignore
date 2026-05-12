@@ -1,7 +1,4 @@
 test.py
-B3_CH.eng
-copv_mass_vs_time_CH.csv
-ethanol_ullage_data_CH.csv
-FUEL_CH.eng
-LOX_CH.eng
-lox_ullage_data_CH.csv
+*.csv
+*.eng
+test_output_spreadsheet.xlsx

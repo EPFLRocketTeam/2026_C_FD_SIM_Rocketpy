@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, fields
 import pandas as pd
 import numpy as np
+from typing import ClassVar
 
 @dataclass(frozen=True)
 class _BlockSpec:
@@ -164,7 +165,7 @@ class Input:
     # Each entry: python_attr_name -> (excel_column_letter, default_if_missing).
     # Letters are absolute Excel columns; resolved positionally inside `cols`.
     # Defaults are Firehorn 1 reference values, used when the cell is blank/NaN.
-    _FIELDS_CONSTANTS:dict[str,tuple[str,float|bool|str]] = {
+    _FIELDS_CONSTANTS:ClassVar[dict[str,tuple[str,float|str|bool]]] = {
         # General
         "Version":         ("Version",                  "CH"),
         "savefiles":       ("savefiles",                True),
@@ -231,6 +232,7 @@ class Input:
     
     def __init__(
         self,
+        const: dict[str,str|float|bool] = {},
         cfg: pd.Series | None = None,
         bgt_timings: pd.Series | None = None,
         bgt_pressurant: pd.Series | None = None,
@@ -244,39 +246,18 @@ class Input:
         reference defaults (see _FIELDS_* dicts). Pass None to use defaults
         for an entire block.
         """
-        self._set_constants()
+        self._set_constants(const)
         self._read_from_rows(cfg, bgt_timings, bgt_pressurant, bgt_oxidizer, bgt_fuel)
         self._compute_derived()
  
     # ----- Init helpers -----
-    def _set_constants(self) -> None:
+    def _set_constants(self, const:dict[str,str|float|bool]) -> None:
         """Set values that don't depend on the simulation row."""
         # Identity (overridden by from_dfs when built from a spreadsheet row)
         self.config_id = None
 
-        # General
-        self.Version = "CH"
-        self.savefiles = True
-        self.N_points = 1000
-        self.run_environment = True
-        self.write_to_file = False
-        self.out_filename = "output_CH.csv"
- 
-        # Propellant tank geometry
-        self.r_int = 0.115
-        self.h_cyl = 0.3851008075
-        self.h_cap = 0.05
- 
-        # Hold-down geometry
-        self.alpha = 6
-        self.beta = 6
-        self.l_rail = 11.65
- 
-        # Hold-down other
-        self.g = 9.81
-        self.F_HD_break = 3300
-        self.mu = 0.5
-        self.m_additions = 0
+        for attr_name, (name, default) in self._FIELDS_CONSTANTS.items():
+            setattr(self,attr_name,const.get(name,default))
  
     def _read_from_rows(
         self,
@@ -371,7 +352,8 @@ class Input:
     @classmethod
     def from_dfs(
         cls,
-        dfs: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame],
+        const:dict[str,str|float|bool],
+        dfs: tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame],
         row: int,
     ) -> Input:
         """Build an Input from the 5 DataFrames returned by `dfs_from_excel()`.
@@ -384,7 +366,7 @@ class Input:
         from column C of the Config sheet, or None for the Firehorn 1 row.
         """
         rows = [df.iloc[row] for df in dfs]
-        instance = cls(*rows)
+        instance = cls(const,*rows)
         cfg_spec = DEFAULT_BLOCKS["cfg"]
         cid = rows[0].iloc[_offset(_CONFIG_ID_COL, cfg_spec.cols)]
         instance.config_id = None if pd.isna(cid) else str(cid)
