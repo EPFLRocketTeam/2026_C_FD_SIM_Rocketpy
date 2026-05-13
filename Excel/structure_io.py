@@ -37,10 +37,10 @@ class Structure:
     nozzle_radius: float = 0.04946         # = 0.09892 / 2
 
     # Tank positions along the rocket axis [m from rocket base]
-    lox_tank_position: float = 1.3375      # = 0.41755 + 0.756 + 0.388/2
-    copv_1_position: float = 2.17655       # = 0.41755 + 0.756 + 0.388 + 0.900 - 0.570/2
-    ethanol_tank_position: float = 2.66155 # = 0.41755 + 0.756 + 0.388 + 0.900 + 0.388/2
-    copv_2_position: float = 3.50055       # = 0.41755 + 0.756 + 0.388 + 0.900 + 0.388 + 0.900 - 0.570/2
+    lox_tank_position: float = 0.41755 + 0.756 + 0.388/2                                # 1.36755
+    copv_1_position: float = 0.41755 + 0.756 + 0.388 + 0.900 - 0.570/2                  # 2.17655
+    ethanol_tank_position: float = 0.41755 + 0.756 + 0.388 + 0.900 + 0.388/2            # 2.65555
+    copv_2_position: float = 0.41755 + 0.756 + 0.388 + 0.900 + 0.388 + 0.900 - 0.570/2  # 3.46455
 
     # Rocket body
     rocket_radius: float = 0.1215          # = 0.243 / 2
