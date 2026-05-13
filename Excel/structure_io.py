@@ -13,7 +13,7 @@ number, e.g.:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -22,21 +22,12 @@ from openpyxl import load_workbook
 SHEET_NAME = "Structure"
 NAME_COLUMN = "A"
 VALUE_COLUMN = "B"
-FIRST_DATA_ROW = 2 #rows above are just aesthetic 
+FIRST_DATA_ROW = 2  # rows above are just aesthetic
 
 
 @dataclass
 class Structure:
-    """All structural / geometric rocket parameters that the notebook reads.
-
-    Defaults match the values previously hardcoded in the notebook.
-    Add a field here AND in the spreadsheet to expose a new parameter.
-    """
-    # Tank (lox + ethanol use these — already on ipt, kept here for completeness
-    # but commented out since they live in ipt.r_int / ipt.h_cyl. If you want to
-    # move them here too, just uncomment.)
-    # r_int: float = 0.115
-    # h_cyl: float = 0.3851008075
+    #TODO: r_int and h_cyl ??? 
 
     # Pressure tank (COPV)
     pressure_tank_radius: float = 0.0885   # = 0.177 / 2
@@ -56,6 +47,7 @@ class Structure:
     center_of_mass_without_motor: float = 2.59
 
     # Aerodynamics
+    # TODO: split into power_off_drag and power_on_drag if team confirms they should differ
     drag_coefficient: float = 0.380        # used for both power_off_drag and power_on_drag
 
 
@@ -68,7 +60,6 @@ def _try_to_float(value) -> float | None:
     if value is None:
         return None
     if isinstance(value, bool):
-        # bools pass isinstance(int) checks in Python, but we don't want them
         return None
     if isinstance(value, (int, float)):
         return float(value)
@@ -81,23 +72,7 @@ def _try_to_float(value) -> float | None:
 
 
 def read_structure(filepath: str | Path) -> Structure:
-    """Read structural parameters from an Excel file.
-
-    Looks at the `Structure` sheet. Reads (Name, Value) pairs starting at
-    row FIRST_DATA_ROW. Any row whose Name matches a field of the Structure
-    dataclass uses that row's Value. Unknown names are ignored.
-
-    Missing files or sheets raise an error (you wanted to know if something
-    went really wrong). Per-field problems (empty cells, unparseable strings)
-    silently fall back to defaults.
-
-    Args:
-        filepath: path to the structure Excel file.
-
-    Returns:
-        A Structure instance with all fields populated (either from the file
-        or from the dataclass defaults).
-    """
+    # Missing files or sheets raise an error
     filepath = Path(filepath)
     if not filepath.exists():
         raise FileNotFoundError(f"Structure file not found: {filepath}")
@@ -111,8 +86,8 @@ def read_structure(filepath: str | Path) -> Structure:
     ws = wb[SHEET_NAME]
 
     # Build {name: value} from the file, skipping rows we can't make sense of.
-    name_col_idx = ord(NAME_COLUMN) - ord("A") + 1
-    value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1
+    name_col_idx = ord(NAME_COLUMN) - ord("A") + 1   # turns "A" into 1 for ws.cell()
+    value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1  # turns "B" into 2
     file_values: dict[str, float] = {}
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
         name = ws.cell(row=row, column=name_col_idx).value
@@ -120,14 +95,12 @@ def read_structure(filepath: str | Path) -> Structure:
             continue
         name = name.strip()
         if not name:
-            continue
+            continue  # skip to next iteration of the loop
         raw_value = ws.cell(row=row, column=value_col_idx).value
         parsed = _try_to_float(raw_value)
         if parsed is not None:
             file_values[name] = parsed
 
-    # Build a Structure, overriding defaults with anything we found in the file.
-    valid_names = {f.name for f in fields(Structure)}
-    overrides = {k: v for k, v in file_values.items() if k in valid_names}
-    return Structure(**overrides)
+    return Structure(**file_values)
+
 
