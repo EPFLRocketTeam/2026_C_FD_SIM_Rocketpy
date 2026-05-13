@@ -1,0 +1,9 @@
+Genetic
+Memetic = Genetic + local optim
+Particle swarm optimization (PSO): Xf = Xi + Vinertial/curr + Vbest_in_population + Vpersonal_best
+ant swarm optim (ASO)= 2 matrices define one for weighted distance to goal & one for pheromone 
+    -> Proba_route_taken = (pheromone_i)^a*(distance_i)^b / (sum i=0 to n ((pheromone_i)^a*(distance_i)^b))
+    -> use roulette for choosing route
+differential evolution = genetic but continuous with vector arithmetic
+bayesian evolution = gaussian process to approximate function value, not evolutionary, stochastic
+shuffled frog leaping algo = memetic + PSO

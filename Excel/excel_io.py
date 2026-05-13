@@ -1,8 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass, fields
-import numpy as np
-from typing import Tuple
 import pandas as pd
+import numpy as np
+from typing import ClassVar
 
 @dataclass(frozen=True)
 class _BlockSpec:
@@ -54,7 +54,7 @@ def dfs_from_excel(
     file: str,
     nsims: int = 44,
     blocks: dict[str, _BlockSpec] = DEFAULT_BLOCKS,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Read the 5 simulation tables (config, timings, pressurant, ox, fuel)."""
     return (
         _read_block(file, blocks["cfg"], nsims),
@@ -165,6 +165,32 @@ class Input:
     # Each entry: python_attr_name -> (excel_column_letter, default_if_missing).
     # Letters are absolute Excel columns; resolved positionally inside `cols`.
     # Defaults are Firehorn 1 reference values, used when the cell is blank/NaN.
+    _FIELDS_CONSTANTS:ClassVar[dict[str,tuple[str,float|str|bool]]] = {
+        # General
+        "Version":         ("Version",                  "CH"),
+        "savefiles":       ("savefiles",                True),
+        "N_points":        ("number of points",         1000),
+        "run_environment": ("run environment",          True),
+        "write_to_file":   ("write to file",            False),
+        "out_filename":    ("output file",              "output_CH.csv"),
+ 
+        # Propellant tank geometry
+        "r_int":           ("interior radius",          0.115),
+        "h_cyl":           ("cylinder height",          0.3851008075),
+        "h_cap":           ("cap height",               0.05),
+ 
+        # Hold-down geometry
+        "alpha":           ("alpha",                    6),
+        "beta":            ("beta",                     6),
+        "l_rail":          ("rail length",              11.65),
+ 
+        # Hold-down other
+        "g":               ("g",                        9.81),
+        "F_HD_break":      ("hold-down break force",    3300),
+        "mu":              ("button-rail friction",     0.5),
+        "m_additions":     ("mass additions",           0),
+    }
+
     _FIELDS_CFG = {
         "m_dry":          ("D", 84.4),    # Dry mass [kg]
         "Thrust":         ("E", 6308),    # Nominal Thrust [N]  (header in sheet is misspelled "Thurst")
@@ -206,6 +232,7 @@ class Input:
     
     def __init__(
         self,
+        const: dict[str,str|float|bool] = {},
         cfg: pd.Series | None = None,
         bgt_timings: pd.Series | None = None,
         bgt_pressurant: pd.Series | None = None,
@@ -219,39 +246,18 @@ class Input:
         reference defaults (see _FIELDS_* dicts). Pass None to use defaults
         for an entire block.
         """
-        self._set_constants()
+        self._set_constants(const)
         self._read_from_rows(cfg, bgt_timings, bgt_pressurant, bgt_oxidizer, bgt_fuel)
         self._compute_derived()
  
     # ----- Init helpers -----
-    def _set_constants(self) -> None:
+    def _set_constants(self, const:dict[str,str|float|bool]) -> None:
         """Set values that don't depend on the simulation row."""
         # Identity (overridden by from_dfs when built from a spreadsheet row)
         self.config_id = None
 
-        # General
-        self.Version = "CH"
-        self.savefiles = True
-        self.N_points = 1000
-        self.run_environment = True
-        self.write_to_file = False
-        self.out_filename = "output_CH.csv"
- 
-        # Propellant tank geometry
-        self.r_int = 0.115
-        self.h_cyl = 0.3851008075
-        self.h_cap = 0.05
- 
-        # Hold-down geometry
-        self.alpha = 6
-        self.beta = 6
-        self.l_rail = 11.65
- 
-        # Hold-down other
-        self.g = 9.81
-        self.F_HD_break = 3300
-        self.mu = 0.5
-        self.m_additions = 0
+        for attr_name, (name, default) in self._FIELDS_CONSTANTS.items():
+            setattr(self,attr_name,const.get(name,default))
  
     def _read_from_rows(
         self,
@@ -314,7 +320,10 @@ class Input:
             + self.m_ox_burn
             + self.m_ox_end
         )
- 
+
+        # Dry mass
+        self.m_dry += self.m_additions
+
         # Wet mass on the pad
         self.wet_mass = (
             self.m_dry + self.m_fuel_total + self.m_ox_total + 2 * self.m_n2_copv
@@ -343,7 +352,8 @@ class Input:
     @classmethod
     def from_dfs(
         cls,
-        dfs: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame],
+        const:dict[str,str|float|bool],
+        dfs: tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame],
         row: int,
     ) -> Input:
         """Build an Input from the 5 DataFrames returned by `dfs_from_excel()`.
@@ -356,7 +366,7 @@ class Input:
         from column C of the Config sheet, or None for the Firehorn 1 row.
         """
         rows = [df.iloc[row] for df in dfs]
-        instance = cls(*rows)
+        instance = cls(const,*rows)
         cfg_spec = DEFAULT_BLOCKS["cfg"]
         cid = rows[0].iloc[_offset(_CONFIG_ID_COL, cfg_spec.cols)]
         instance.config_id = None if pd.isna(cid) else str(cid)
