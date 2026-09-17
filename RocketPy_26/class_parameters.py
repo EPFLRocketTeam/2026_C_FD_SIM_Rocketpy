@@ -24,6 +24,15 @@ class Parameters:
     n_points:      int   = 1000
     write_to_file: bool  = False
 
+    # SORTIES SOUHAITÉES (n'a d'effet que si write_to_file=True)
+    output_general:         bool = True   # résultats généraux (dans la feuille Excel Simulation)
+    output_euler_angles:    bool = False  # euler_angles.png
+    output_stability:       bool = False  # stability_margin.png
+    output_trajectory:      bool = False  # trajectory.png
+    output_velocity:        bool = False  # velocity.png
+    output_acceleration:    bool = False  # acceleration.png
+    output_thrust_curve:    bool = False  # thrust_curve.png
+
     # ENVIRONNEMENT
     annee:     int   = 2026
     mois:      int   = 6
@@ -74,7 +83,7 @@ def read_parameters(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Param
     if not filepath.exists():
         raise FileNotFoundError(f"File not found: {filepath}")
 
-    wb = load_workbook(filepath, data_only=True)
+    wb = load_workbook(filepath, data_only=True, read_only=True)
     # Try exact match first, then strip-match (handles trailing spaces)
     if sheet_name not in wb.sheetnames:
         stripped = {s.strip(): s for s in wb.sheetnames}
