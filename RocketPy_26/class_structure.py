@@ -18,7 +18,9 @@ FIRST_DATA_ROW = 2
 @dataclass
 class Structure:
     # ROCKET
-    m_additions:  float = 0.0
+    mode:  int = 0  # Mode 0 : mode normal où on utilise toute les valeurs insérées; Mode 1: mode où on insère une masse et un CoM mesuré et les baies servent pour les masses additionelles
+    l_center_of_mass: float = 266
+    m_dry_measured: float = 84500
     r_rocket:     float = 0.1215
     drag_coeff_rocket: float = 0.38
 
@@ -34,6 +36,7 @@ class Structure:
     m_ebay: float = 26.476
 
     # LOX BAY
+    pos_lox: float = 1.393
     l_lox: float = 0.388
     m_lox: float = 8.387
 
@@ -44,14 +47,17 @@ class Structure:
     r_aerocover:   float = 0.03
 
     # PBAY 1
+    pos_copv_mbay: float = 2.22531
     l_pbay1: float = 0.9
     m_pbay1: float = 11.049
 
     # ETH BAY
+    pos_eth: float = 2.998
     l_eth: float = 0.388
     m_eth: float = 8.387
 
     # PBAY 2
+    pos_copv_pbay: float = 3.64731
     l_pbay2: float = 0.9
     m_pbay2: float = 11.03
 
@@ -70,14 +76,16 @@ class Structure:
     l_nosecone: float = 1.003
     m_nosecone: float = 5.838
 
-    # TANK
+    # TANK (LOX et Ethanol partagent cette même géométrie)
     r_int: float = 0.115
-    h_cyl: float = 0.38510
+    tank_spherical_caps: bool = False
+    tank_volume: float = 0.016  # [m^3] volume interne total voulu
     h_cap: float = 0.05
 
     # COPV
-    r_int_copv: float = 0.0885
-    h_copv:     float = 0.570
+    r_int_copv: float = 0.0858
+    copv_spherical_caps: bool = False
+    copv_volume:     float = 0.009
 
     # FINS
     n_fins:       float = 4.0
@@ -87,6 +95,7 @@ class Structure:
     pos_fins:     float = 1.1315
     cangle_fins:  float = 0.0
     sweep_l_fins: float = 0.539
+    m_fins: float = 2.418786
 
     # RAIL BUTTON
     pos_sup_rb: float = 0.46280
@@ -108,12 +117,23 @@ def _try_to_float(value) -> float | None:
     return None
 
 
+def _try_to_bool(value) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        if value.strip().lower() == "true":
+            return True
+        if value.strip().lower() == "false":
+            return False
+    return None
+
+
 def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Structure:
     filepath = Path(filepath)
     if not filepath.exists():
         raise FileNotFoundError(f"File not found: {filepath}")
 
-    wb = load_workbook(filepath, data_only=True)
+    wb = load_workbook(filepath, data_only=True, read_only=True)
     if sheet_name not in wb.sheetnames:
         raise ValueError(
             f"Sheet {sheet_name!r} not found in {filepath}. "
@@ -124,7 +144,9 @@ def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Struct
     name_col_idx  = ord(NAME_COLUMN)  - ord("A") + 1
     value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1
 
-    file_values: dict[str, float] = {}
+    bool_fields = {"tank_spherical_caps", "copv_spherical_caps"}
+
+    file_values: dict[str, float | bool] = {}
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
         name = ws.cell(row=row, column=name_col_idx).value
         if not isinstance(name, str):
@@ -132,7 +154,15 @@ def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Struct
         name = name.strip()
         if not name:
             continue
-        parsed = _try_to_float(ws.cell(row=row, column=value_col_idx).value)
+        raw = ws.cell(row=row, column=value_col_idx).value
+
+        if name in bool_fields:
+            parsed_bool = _try_to_bool(raw)
+            if parsed_bool is not None:
+                file_values[name] = parsed_bool
+            continue
+
+        parsed = _try_to_float(raw)
         if parsed is not None:
             file_values[name] = parsed
 

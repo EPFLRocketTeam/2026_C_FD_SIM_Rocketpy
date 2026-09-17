@@ -46,15 +46,25 @@ EXTRACTORS = {
     "margin_rail":       lambda fl: float(fl.static_margin(fl.out_of_rail_time)),
 }
 
-def write_flight_outputs_vertical(flight: Any, version: str) -> dict[str, Any]:
-    """Cherche l'Excel au même endroit et écrit les résultats verticalement."""
-    # Plus besoin de dossier, on cherche directement le fichier au même endroit
-    filepath = Path(f"{version}_SIM.xlsx")
+def write_flight_outputs_vertical(
+    flight: Any,
+    version: str,
+    directory: str | Path = ".",
+    dry_mass: float | None = None,
+    wet_mass: float | None = None,
+    nominal_total_impulse: float | None = None,
+) -> dict[str, Any]:
+    """Cherche l'Excel dans le dossier indiqué et écrit les résultats
+    verticalement. dry_mass/wet_mass sont ajoutés en tête (section MASSE)
+    s'ils sont fournis. nominal_total_impulse, si fourni, remplace la
+    valeur 'Total impulse' calculée par RocketPy (qui exclut la phase
+    hold-down) par l'impulsion nominale demandée (qui l'inclut)."""
+    filepath = Path(directory) / f"{version}.xlsx"
     
     if not filepath.exists():
         raise FileNotFoundError(f"Le fichier Excel '{filepath.name}' est introuvable au même endroit.")
 
-    wb = load_workbook(filepath)
+    wb = load_workbook(filepath, data_only=False)
     if TARGET_SHEET not in wb.sheetnames:
         raise ValueError(f"L'onglet '{TARGET_SHEET}' n'existe pas.")
         
@@ -78,6 +88,28 @@ def write_flight_outputs_vertical(flight: Any, version: str) -> dict[str, Any]:
     current_row = START_ROW
     written = {}
 
+    if dry_mass is not None or wet_mass is not None:
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=2)
+        cell = ws[f"{NAME_COLUMN}{current_row}"]
+        cell.value = "MASSE"
+        cell.font = titre_font
+        cell.fill = titre_fill
+        current_row += 1
+        if dry_mass is not None:
+            ws[f"{NAME_COLUMN}{current_row}"] = "Dry mass [kg]"
+            ws[f"{NAME_COLUMN}{current_row}"].font = data_font_bold
+            ws[f"{VALUE_COLUMN}{current_row}"] = float(dry_mass)
+            ws[f"{VALUE_COLUMN}{current_row}"].number_format = "0.00"
+            written["Dry mass [kg]"] = float(dry_mass)
+            current_row += 1
+        if wet_mass is not None:
+            ws[f"{NAME_COLUMN}{current_row}"] = "Wet mass (initial) [kg]"
+            ws[f"{NAME_COLUMN}{current_row}"].font = data_font_bold
+            ws[f"{VALUE_COLUMN}{current_row}"] = float(wet_mass)
+            ws[f"{VALUE_COLUMN}{current_row}"].number_format = "0.00"
+            written["Wet mass (initial) [kg]"] = float(wet_mass)
+            current_row += 1
+
     for label, key in OUTPUT_STRUCTURE:
         if key == "TITRE":
             ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=2)
@@ -88,11 +120,14 @@ def write_flight_outputs_vertical(flight: Any, version: str) -> dict[str, Any]:
             current_row += 1
             continue
 
-        extractor = EXTRACTORS.get(key)
-        try:
-            value = extractor(flight)
-        except Exception:
-            continue
+        if key == "total_impulse" and nominal_total_impulse is not None:
+            value = float(nominal_total_impulse)
+        else:
+            extractor = EXTRACTORS.get(key)
+            try:
+                value = extractor(flight)
+            except Exception:
+                continue
 
         if value is None:
             continue
@@ -100,6 +135,7 @@ def write_flight_outputs_vertical(flight: Any, version: str) -> dict[str, Any]:
         ws[f"{NAME_COLUMN}{current_row}"] = label
         ws[f"{NAME_COLUMN}{current_row}"].font = data_font_bold
         ws[f"{VALUE_COLUMN}{current_row}"] = value
+        ws[f"{VALUE_COLUMN}{current_row}"].number_format = "0.0000" if abs(value) < 10 else "0.00"
         written[label] = value
         current_row += 1  
 
