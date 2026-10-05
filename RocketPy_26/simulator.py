@@ -65,7 +65,8 @@ prop   = read_propellant(FILE)
 params = read_parameters(FILE)
 
 # Structure
-mode                     = struct.mode
+mode_CoM                 = struct.mode_CoM
+mode_Inertia             = struct.mode_Inertia
 l_center_of_mass         = struct.l_center_of_mass
 m_dry_measured           = struct.m_dry_measured
 r_rocket                 = struct.r_rocket
@@ -199,7 +200,7 @@ rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1, ETH, PressurantBa
 # ============================================================
 # CoM et moment d'inertie
 # ============================================================
-if mode == 0:
+if mode_CoM == 0:
     m_dry = sum(bay.mass for bay in rocket)
 
     z_cm = 0
@@ -212,6 +213,32 @@ if mode == 0:
 
     z_cm /= m_dry
     y_cm /= m_dry
+
+
+elif mode_CoM == 1:
+    m_dry = m_dry_measured + sum(bay.mass for bay in rocket)
+    
+    z_cm = l_center_of_mass * m_dry_measured
+    y_cm = 0
+
+    for bay in rocket:
+        z_local, y_local = bay.center_masse()
+        # print(bay.nom, bay.mass)
+        z_cm += bay.mass * (bay.z + z_local)
+        y_cm += bay.mass * (bay.y + y_local)
+
+    z_cm /= m_dry
+    y_cm /= m_dry
+
+else:
+    m_dry = 0
+    raise ValueError(
+        "Mode of CoM has to be 0 or 1."
+        "Setting dry mass to 0."
+    )
+
+
+if mode_Inertia == 0:
 
     Ix = 0
     Iy = 0
@@ -230,52 +257,43 @@ if mode == 0:
         Ix += Ix_local + bay.mass * (dy**2 + dz**2)
         Iy += Iy_local + bay.mass * (dx**2 + dz**2)
         Iz += Iz_local + bay.mass * (dx**2 + dy**2)
-elif mode == 1:
-    m_dry = m_dry_measured + sum(bay.mass for bay in rocket)
-    
-    z_cm = l_center_of_mass * m_dry_measured
-    y_cm = 0
 
-    for bay in rocket:
-        z_local, y_local = bay.center_masse()
-        # print(bay.nom, bay.mass)
-        z_cm += bay.mass * (bay.z + z_local)
-        y_cm += bay.mass * (bay.y + y_local)
+    # si mode_CoM == 1, il faut ajouter l'effet de la m_dry_measured
+    if mode_CoM == 1:
+        L_rocket = Nosecone.z + Nosecone.length
 
-    z_cm /= m_dry
-    y_cm /= m_dry
+        # Inertie propre : approximation cylindre homogène
+        Ix_meas = m_dry_measured * (3 * r_rocket**2 + L_rocket**2) / 12
+        Iy_meas = Ix_meas
+        Iz_meas = 0.5 * m_dry_measured * r_rocket**2
 
-    # z_cm -= 0.1
+        # Huygens
+        dz = l_center_of_mass - z_cm
+        dy = 0.0 - y_cm
+        dx = 0.0
+
+        Ix += Ix_meas + m_dry_measured * (dy**2 + dz**2)
+        Iy += Iy_meas + m_dry_measured * (dx**2 + dz**2)
+        Iz += Iz_meas + m_dry_measured * (dx**2 + dy**2)
+
+elif mode_Inertia == 1:
 
     # Hardcoded the model (EuRoC_1)
     Ix = 242.7543433720102
     Iy = 242.71214558814867
     Iz = 0.9012818783579469
 
-    # for bay in rocket:
-    #     z_local, y_local = bay.center_masse()
-    #     z_bay_cm = bay.z + z_local
-    #     y_bay_cm = bay.y + y_local
-    #     dz = z_bay_cm - z_cm
-    #     dy = y_bay_cm - y_cm
-    #     dx = 0  # suppose symmetry
-
-    #     Ix_local, Iy_local, Iz_local = bay.moment_of_inertia()
-
-    #     Ix += Ix_local + bay.mass * (dy**2 + dz**2)
-    #     Iy += Iy_local + bay.mass * (dx**2 + dz**2)
-    #     Iz += Iz_local + bay.mass * (dx**2 + dy**2)
 else:
-    m_dry = 0
     Ix = 0
     Iy = 0
     Iz = 0
     raise ValueError(
-        "Mode has to be 0 or 1."
-        "Setting dry mass and inertia to 0."
+        "Mode of inertia has to be 0 or 1."
+        "Setting Inertia to 0."
     )
 
-# print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
+
+print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
 
 # ============================================================
 # Propulsion reference quantities
