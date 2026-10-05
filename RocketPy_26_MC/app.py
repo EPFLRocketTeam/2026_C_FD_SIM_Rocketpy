@@ -414,7 +414,7 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
 
         propellant_vals = render_dataclass_form(
             default_propellant, "prop", advanced, ESSENTIAL_FIELDS["Propellant"],
-            exclude_fields={"thrust_curve_mode", "derated_thrust"},
+            exclude_fields={"thrust_curve_mode", "derated_thrust", "m_lox_density", "m_eth_density"},
         )
         propellant_vals["thrust_curve_mode"] = thrust_curve_mode
         propellant_vals["derated_thrust"] = derated_thrust_val
@@ -862,7 +862,7 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
     with tab_propellant:
         propellant_vals = render_dataclass_form(
             default_propellant, "mcp", advanced, ESSENTIAL_FIELDS["Propellant"],
-            exclude_fields={"thrust_curve_mode", "derated_thrust"},
+            exclude_fields={"thrust_curve_mode", "derated_thrust", "m_lox_density", "m_eth_density"},
         )
         propellant_vals["thrust_curve_mode"] = default_propellant.thrust_curve_mode
         propellant_vals["derated_thrust"] = default_propellant.derated_thrust

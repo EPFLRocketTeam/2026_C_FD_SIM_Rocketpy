@@ -5,9 +5,10 @@ Every field has a default value. Section header rows (no numeric value in
 column B) are automatically skipped.
 """
 from __future__ import annotations
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, field
 from pathlib import Path
 from openpyxl import load_workbook
+from CoolProp.CoolProp import PropsSI
 
 SHEET_NAME   = "Propellant "   # note: trailing space in the Excel sheet name
 NAME_COLUMN  = "A"
@@ -41,9 +42,19 @@ class Propellant:
     eth_frac_cooling: float = 0.075
 
     # MASS
-    m_eth_density: float = 810.0
+
+    lox_temperature:  float = 90.15  # K
+    lox_pressure:     float = 6e6    # Pa
+
+    eth_temperature:  float = 293.15 # K
+    eth_pressure:     float = 6e6    # Pa    
+    eth_massic_frac:  float = 0.9    # massic fraction of ETH, H2O in Mischung
+
+    # will be calculated after
+    m_lox_density:    float = field(init=False, default=1154)
+    m_eth_density:    float = field(init=False, default=810)
+
     m_eth_unused:  float = 0.405
-    m_lox_density: float = 1154.0
     m_lox_unused:  float = 0.577
     m_n2:          float = 2.605
 
@@ -58,6 +69,27 @@ class Propellant:
     # FORCE
     f_shutdown:  float = 0.0
     f_hold_down: float = 3300.0
+
+
+    def __post_init__(self):
+        # LOx
+        self.m_lox_density = PropsSI('D', 'T', self.lox_temperature, 'P', self.lox_pressure, 'Oxygen')
+
+        # eth
+        h2o_massic_frac = 1 - self.eth_massic_frac
+
+        M_eth = PropsSI('molar_mass', 'Ethanol')
+        M_h2o = PropsSI('molar_mass', 'Water')
+
+        n_eth = self.eth_massic_frac / M_eth
+        n_h2o = h2o_massic_frac / M_h2o
+
+        x_eth = n_eth / (n_eth + n_h2o)
+        x_h2o = 1 - x_eth
+
+        fuel = f"Ethanol[{x_eth}]&Water[{x_h2o}]"
+
+        self.m_eth_density = PropsSI('D', 'T', self.eth_temperature, 'P', self.eth_pressure, fuel)
 
 
 def _try_to_float(value) -> float | None:
@@ -114,7 +146,7 @@ def read_propellant(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Prope
         if parsed is not None:
             file_values[name] = parsed
 
-    valid = {f.name for f in fields(Propellant)}
+    valid = {f.name for f in fields(Propellant) if f.init}
     unknown = set(file_values) - valid
     if unknown:
         print(f"Warning [Propellant]: champs ignorés (inconnus) : {unknown}")
