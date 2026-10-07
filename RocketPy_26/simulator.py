@@ -293,7 +293,7 @@ else:
     )
 
 
-print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
+#print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
 
 # ============================================================
 # Propulsion reference quantities
