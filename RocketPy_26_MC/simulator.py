@@ -180,57 +180,103 @@ def run_simulation(
         ETH, PressurantBay2, AVBay, RecoveryBay, Nosecone,
     ]
 
-    if struct.mode == 0:
+    # ============================================================
+    # CoM et moment d'inertie
+    # ============================================================
+    if struct.mode_CoM == 0:
         m_dry = sum(bay.mass for bay in rocket_bays)
 
-        z_cm = 0.0
-        y_cm = 0.0
+        z_cm = 0
+        y_cm = 0
+
         for bay in rocket_bays:
             z_local, y_local = bay.center_masse()
             z_cm += bay.mass * (bay.z + z_local)
             y_cm += bay.mass * (bay.y + y_local)
+
         z_cm /= m_dry
         y_cm /= m_dry
 
-        Ix = Iy = Iz = 0.0
+
+    elif struct.mode_CoM == 1:
+        m_dry = struct.m_dry_measured + sum(bay.mass for bay in rocket_bays)
+        
+        z_cm = struct.l_center_of_mass * struct.m_dry_measured
+        y_cm = 0
+
+        for bay in rocket_bays:
+            z_local, y_local = bay.center_masse()
+            # print(bay.nom, bay.mass)
+            z_cm += bay.mass * (bay.z + z_local)
+            y_cm += bay.mass * (bay.y + y_local)
+
+        z_cm /= m_dry
+        y_cm /= m_dry
+
+    else:
+        m_dry = 0
+        raise ValueError(
+            "Mode of CoM has to be 0 or 1."
+            "Setting dry mass to 0."
+        )
+
+
+    if struct.mode_Inertia == 0:
+
+        Ix = 0
+        Iy = 0
+        Iz = 0
+
         for bay in rocket_bays:
             z_local, y_local = bay.center_masse()
             z_bay_cm = bay.z + z_local
             y_bay_cm = bay.y + y_local
             dz = z_bay_cm - z_cm
             dy = y_bay_cm - y_cm
-            dx = 0.0  # symétrie supposée
+            dx = 0  # suppose symmetry
 
             Ix_local, Iy_local, Iz_local = bay.moment_of_inertia()
+
             Ix += Ix_local + bay.mass * (dy**2 + dz**2)
             Iy += Iy_local + bay.mass * (dx**2 + dz**2)
             Iz += Iz_local + bay.mass * (dx**2 + dy**2)
 
-    elif struct.mode == 1:
-        # Mode "masse mesurée" : m_dry_measured + l_center_of_mass viennent
-        # d'une pesée/mesure réelle ; les bays ne servent qu'aux masses
-        # additionnelles (avionique, etc.). ATTENTION : les moments
-        # d'inertie ci-dessous sont ceux mesurés/estimés pour un modèle
-        # de référence précis (EuRoC_1) — ils ne sont PAS recalculés à
-        # partir des bays et doivent être mis à jour manuellement si la
-        # configuration change.
-        m_dry = struct.m_dry_measured + sum(bay.mass for bay in rocket_bays)
+        # si mode_CoM == 1, il faut ajouter l'effet de la m_dry_measured
+        if struct.mode_CoM == 1:
+            L_rocket = Nosecone.z + Nosecone.length
 
-        z_cm = struct.l_center_of_mass * struct.m_dry_measured
-        y_cm = 0.0
-        for bay in rocket_bays:
-            z_local, y_local = bay.center_masse()
-            z_cm += bay.mass * (bay.z + z_local)
-            y_cm += bay.mass * (bay.y + y_local)
-        z_cm /= m_dry
-        y_cm /= m_dry
+            # Inertie propre : approximation cylindre homogène
+            Ix_meas = struct.m_dry_measured * (3 * struct.r_rocket**2 + L_rocket**2) / 12
+            Iy_meas = Ix_meas
+            Iz_meas = 0.5 * struct.m_dry_measured * struct.r_rocket**2
 
+            # Huygens
+            dz = struct.l_center_of_mass - z_cm
+            dy = 0.0 - y_cm
+            dx = 0.0
+
+            Ix += Ix_meas + struct.m_dry_measured * (dy**2 + dz**2)
+            Iy += Iy_meas + struct.m_dry_measured * (dx**2 + dz**2)
+            Iz += Iz_meas + struct.m_dry_measured * (dx**2 + dy**2)
+
+    elif struct.mode_Inertia == 1:
+
+        # Hardcoded the model (EuRoC_1)
         Ix = 242.7543433720102
         Iy = 242.71214558814867
         Iz = 0.9012818783579469
 
     else:
-        raise ValueError("struct.mode has to be 0 or 1.")
+        Ix = 0
+        Iy = 0
+        Iz = 0
+        raise ValueError(
+            "Mode of inertia has to be 0 or 1."
+            "Setting Inertia to 0."
+    )
+
+
+#print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
 
     # ------------------------------------------------------------------
     # 2. Grandeurs de propulsion de référence

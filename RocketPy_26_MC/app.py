@@ -128,7 +128,8 @@ def load_defaults(excel_path: str, _mtime: float):
 # ----------------------------------------------------------------------
 PARAM_HELP = {
     # --- Structure ---
-    "mode": "0 = compute dry mass/CoM/inertia from the bays below. 1 = use a measured dry mass + CoM (m_dry_measured, l_center_of_mass) with the bays as additional masses only — inertia is then a fixed measured value, not recomputed.",
+    "mode_CoM": "0 = compute dry mass/CoM from the bays below. 1 = use a measured dry mass + CoM (m_dry_measured, l_center_of_mass) with the bays as additional masses only — inertia is then a fixed measured value, not recomputed.",
+    "mode_Inertia": "0 = compute inertia from the bays below. 1 = use a measured dry mass + CoM (m_dry_measured, l_center_of_mass) with the bays as additional masses only — inertia is then a fixed measured value, not recomputed.",
     "l_center_of_mass": "Measured center-of-mass axial position (mode 1 only) [mm or same unit as bay positions]",
     "m_dry_measured": "Measured dry mass of the reference vehicle (mode 1 only) [kg]",
     "r_rocket": "Rocket body outer radius [m]",
