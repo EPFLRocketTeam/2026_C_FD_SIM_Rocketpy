@@ -18,7 +18,8 @@ FIRST_DATA_ROW = 2
 @dataclass
 class Structure:
     # ROCKET
-    mode:  int = 0  # Mode 0 : mode normal où on utilise toute les valeurs insérées; Mode 1: mode où on insère une masse et un CoM mesuré et les baies servent pour les masses additionelles
+    mode_CoM:  int = 0  # Mode 0 : mode normal où on utilise toute les valeurs insérées; Mode 1: mode où on insère une masse et un CoM mesuré et les baies servent pour les masses additionelles
+    mode_Inertia: int = 0 # Mode 0 : mode normal où on utilise toute les valeurs insérées; Mode 1: mode où on insère une masse et une inertie mesuré et les baies servent pour les masses additionelles
     l_center_of_mass: float = 266
     m_dry_measured: float = 84500
     r_rocket:     float = 0.1215
