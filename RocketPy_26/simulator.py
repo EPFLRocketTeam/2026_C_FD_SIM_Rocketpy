@@ -197,22 +197,31 @@ rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1, ETH, PressurantBa
 
 
 # ============================================================
-# CoM et moment d'inertie
+# Center of Mass and Moment of Inertia
 # ============================================================
-if mode == 0:
-    m_dry = sum(bay.mass for bay in rocket)
+if mode not in (0,1):
+    raise ValueError(
+        "Mode has to be 0 or 1."
+        "Setting dry mass and inertia to 0."
+        )
 
-    z_cm = 0
-    y_cm = 0
-
+# Calculates the total dry mass, the y_cm, z_cm with inputs m_dry, y_cm and z_cm
+def calculate_dry_mass_yz_cm(
+    m_dry: float,
+    y_cm: float, 
+    z_cm: float
+    ) -> tuple[float,float,float]:
     for bay in rocket:
+        m_dry += bay.mass
+
         z_local, y_local = bay.center_masse()
-        z_cm += bay.mass * (bay.z + z_local)
         y_cm += bay.mass * (bay.y + y_local)
+        z_cm += bay.mass * (bay.z + z_local)
 
-    z_cm /= m_dry
-    y_cm /= m_dry
+    return (m_dry, (y_cm / m_dry), (z_cm / m_dry))
 
+if mode == 0:
+    m_dry, y_cm, z_cm = calculate_dry_mass_yz_cm(0,0,0)
     Ix = 0
     Iy = 0
     Iz = 0
@@ -230,53 +239,15 @@ if mode == 0:
         Ix += Ix_local + bay.mass * (dy**2 + dz**2)
         Iy += Iy_local + bay.mass * (dx**2 + dz**2)
         Iz += Iz_local + bay.mass * (dx**2 + dy**2)
-elif mode == 1:
-    m_dry = m_dry_measured + sum(bay.mass for bay in rocket)
-    
-    z_cm = l_center_of_mass * m_dry_measured
-    y_cm = 0
-
-    for bay in rocket:
-        z_local, y_local = bay.center_masse()
-        # print(bay.nom, bay.mass)
-        z_cm += bay.mass * (bay.z + z_local)
-        y_cm += bay.mass * (bay.y + y_local)
-
-    z_cm /= m_dry
-    y_cm /= m_dry
-
-    # z_cm -= 0.1
+        
+else: #if mode == 1 
+    m_dry, y_cm, z_cm = calculate_dry_mass_yz_cm(m_dry_measured, 0, l_center_of_mass * m_dry_measured)
 
     # Hardcoded the model (EuRoC_1)
     Ix = 242.7543433720102
     Iy = 242.71214558814867
     Iz = 0.9012818783579469
-
-    # for bay in rocket:
-    #     z_local, y_local = bay.center_masse()
-    #     z_bay_cm = bay.z + z_local
-    #     y_bay_cm = bay.y + y_local
-    #     dz = z_bay_cm - z_cm
-    #     dy = y_bay_cm - y_cm
-    #     dx = 0  # suppose symmetry
-
-    #     Ix_local, Iy_local, Iz_local = bay.moment_of_inertia()
-
-    #     Ix += Ix_local + bay.mass * (dy**2 + dz**2)
-    #     Iy += Iy_local + bay.mass * (dx**2 + dz**2)
-    #     Iz += Iz_local + bay.mass * (dx**2 + dy**2)
-else:
-    m_dry = 0
-    Ix = 0
-    Iy = 0
-    Iz = 0
-    raise ValueError(
-        "Mode has to be 0 or 1."
-        "Setting dry mass and inertia to 0."
-    )
-
-# print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
-
+    
 # ============================================================
 # Propulsion reference quantities
 # ============================================================
@@ -2618,24 +2589,8 @@ if write_to_file:
     # --- Graphes -> PNG ---
     t_plot = np.linspace(0.01, flight.t_final * 0.999, n_points)
 
-    if output_euler_angles:
-        phi = np.array([flight.phi(t) for t in t_plot])
-        theta = np.array([flight.theta(t) for t in t_plot])
-        psi = np.array([flight.psi(t) for t in t_plot])
-        plt.figure(figsize=(9, 5))
-        plt.plot(t_plot, phi, label="φ — Spin")
-        plt.plot(t_plot, theta, label="θ — Nutation")
-        plt.plot(t_plot, psi, label="ψ — Precession")
-        plt.xlabel("Time [s]"); plt.ylabel("Angle [°]"); plt.title("Euler Angles")
-        plt.legend(); plt.grid(True, alpha=0.3)
-        plt.savefig(os.path.join(DATA_DIR, f"euler_angles_{version}.png"), dpi=150, bbox_inches="tight")
-        plt.show()
-
     if output_stability:
-        margin = np.array([
-            flight.stability_margin(t)
-            for t in t_plot
-        ])
+        margin = flight.stability_margin(t_plot)
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, margin, color="firebrick")
         plt.axhline(0, color="black", linewidth=0.8, linestyle="--")
@@ -2648,9 +2603,9 @@ if write_to_file:
         # Centre de pression au cours du temps : RocketPy donne cp_position
         # comme fonction du Mach (pas directement du temps), on compose donc
         # avec le Mach instantané pour obtenir cp(t).
-        mach_t = np.array([flight.mach_number(t) for t in t_plot])
-        cp_position = np.array([firehorn2.cp_position(m) for m in mach_t])
-        cg_position = np.array([firehorn2.center_of_mass(t) for t in t_plot])
+        mach_t = flight.mach_number(t_plot) 
+        cp_position = firehorn2.cp_position(mach_t)
+        cg_position = firehorn2.center_of_mass(t_plot)
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, cp_position, color="darkviolet", label="Center of Pressure (CP)")
         plt.plot(t_plot, cg_position, color="gray", linestyle="--", label="Center of Gravity (CG)")
@@ -2660,7 +2615,7 @@ if write_to_file:
         plt.show()
 
     if output_trajectory:
-        altitude = np.array([flight.altitude(t) for t in t_plot])
+        altitude =  flight.altitude(t_plot)
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, altitude, color="steelblue")
         plt.xlabel("Time [s]"); plt.ylabel("Altitude AGL [m]"); plt.title("Altitude vs Time")
@@ -2669,7 +2624,7 @@ if write_to_file:
         plt.show()
 
     if output_velocity:
-        speed = np.array([flight.speed(t) for t in t_plot])
+        speed = flight.speed(t_plot)
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, speed, color="darkorange")
         plt.xlabel("Time [s]"); plt.ylabel("Speed [m/s]"); plt.title("Speed vs Time")
@@ -2678,7 +2633,7 @@ if write_to_file:
         plt.show()
 
     if output_acceleration:
-        accel = np.array([flight.acceleration(t) for t in t_plot])
+        accel = flight.acceleration(t_plot)
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, accel, color="seagreen")
         plt.xlabel("Time [s]"); plt.ylabel("Acceleration [m/s²]"); plt.title("Acceleration vs Time")
