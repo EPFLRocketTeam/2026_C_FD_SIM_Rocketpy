@@ -28,7 +28,8 @@ class Propellant:
     # THRUST CURVE MODEL
     thrust_curve_mode: str = "constant"  # "constant" ou "peaked"
     derated_thrust: float = (
-        0.0  # [N] palier après le pic (mode "peaked" uniquement) ; 0 = 85% du pic par défaut
+        0.0  # [N] palier après le pic (mode "peaked" uniquement) ;
+        # 0 = 85% du pic par défaut
     )
 
     # MASS FLOW RATE
@@ -159,7 +160,8 @@ def read_propellant(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Prope
 
     if file_values.get("thrust_curve_mode") not in (None, "constant", "peaked"):
         print(
-            f"Warning [Propellant]: thrust_curve_mode={file_values['thrust_curve_mode']!r} "
+            f"Warning [Propellant]: "
+            f"thrust_curve_mode={file_values['thrust_curve_mode']!r} "
             "invalide (attendu 'constant' ou 'peaked'), retombe sur 'constant'."
         )
         file_values["thrust_curve_mode"] = "constant"

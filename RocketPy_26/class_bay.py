@@ -1,5 +1,4 @@
 import math
-from scipy.integrate import dblquad
 
 
 class Bay:
@@ -10,7 +9,8 @@ class Bay:
         self.radius = radius  # [m] (or width for a triangular shape)
         self.length = length  # [m]
         self.mass = mass  # [kg]
-        self.shape = shape  # 'cylindrical', 'conical', 'semi-cylindrical', 'triangular', 'tank' (holed cylinder and two disks to close it)
+        self.shape = shape  # 'cylindrical', 'conical', 'semi-cylindrical',
+        # 'triangular', 'tank' (holed cylinder and two disks to close it)
         self.width = width  # [m] only for triangular shapes
 
     def center_masse(self):
@@ -34,7 +34,7 @@ class Bay:
             raise ValueError("undefined shape")
 
     def moment_of_inertia(self):
-        # --- Compute the moment of inertia of the bay (Ix, Iy, Iz) relative to the center of mass of the bay ---
+        # Compute the moment of inertia relative to the bay's center of mass.
         if self.shape == "cylindrical":
 
             Iz = 1 / 2 * self.mass * self.radius**2
@@ -51,13 +51,13 @@ class Bay:
 
             # contribution of the holed cylinder
             Iz_cylinder = mass_cylinder * self.radius**2
-            Ix_cylinder = Iy_cylinder = (
+            Ix_cylinder = (
                 1 / 12 * mass_cylinder * (6 * self.radius**2 + self.length**2)
             )
 
             # contribution of the disks closing the cylinder
             Iz_disk = 1 / 2 * mass_disk * self.radius**2
-            Ix_disk = Iy_disk = 1 / 4 * mass_disk * self.radius**2
+            Ix_disk = 1 / 4 * mass_disk * self.radius**2
 
             # add contribution and use Huygens-Steiner
             Iz = Iz_cylinder + 2 * Iz_disk

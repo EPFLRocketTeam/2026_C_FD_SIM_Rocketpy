@@ -100,9 +100,6 @@ def read_parameters(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Param
     name_col_idx = ord(NAME_COLUMN) - ord("A") + 1
     value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1
 
-    # Field type map for casting
-    field_types = {f.name: f.type for f in fields(Parameters)}
-
     file_values: dict[str, object] = {}
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
         name = ws.cell(row=row, column=name_col_idx).value

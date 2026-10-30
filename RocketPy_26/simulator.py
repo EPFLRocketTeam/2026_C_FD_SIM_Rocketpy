@@ -16,21 +16,22 @@ chercher à mettre à jour.
 # ============================================================
 # Imports
 # ============================================================
-import sys, os
-
-sys.path.append(os.path.join(os.getcwd(), "..", "Excel"))
+import os
+import sys
 
 import csv
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from class_bay import Bay
-from class_structure import read_structure
-from class_propellant import read_propellant
-from class_parameters import read_parameters
+sys.path.append(os.path.join(os.getcwd(), "..", "Excel"))
 
-from rocketpy import (
+from class_bay import Bay  # noqa: E402
+from class_structure import read_structure  # noqa: E402
+from class_propellant import read_propellant  # noqa: E402
+from class_parameters import read_parameters  # noqa: E402
+
+from rocketpy import (  # noqa: E402
     Environment,
     LiquidMotor,
     Rocket,
@@ -63,7 +64,8 @@ except NameError:
 #
 # Exemple : crée un dossier "v1" contenant une copie du template (par ex.
 # renommée "v1.xlsx"), puis mets FILE = "v1/v1.xlsx" ci-dessous.
-FILE = "EuRoC_rapport/EuRoC_rapport.xlsx"  # <-- à adapter : chemin vers TON fichier de travail
+FILE = "EuRoC_rapport/EuRoC_rapport.xlsx"  # <-- à adapter : chemin vers TON
+# fichier de travail
 
 DATA_DIR = os.path.dirname(os.path.abspath(FILE)) or "."
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -2039,7 +2041,8 @@ if not save_files:
         except FileNotFoundError:
             pass
     print(
-        f"save_files=False : fichiers intermédiaires supprimés ({len(intermediate_files)} fichiers)."
+        f"save_files=False : fichiers intermédiaires supprimés "
+        f"({len(intermediate_files)} fichiers)."
     )
 
 
@@ -2055,7 +2058,8 @@ print(f"Out of rail time: {(t_break + flight.out_of_rail_time):.3f} [s]")
 print(f"Burn out time: {(t_break + flight.rocket.motor.burn_out_time):.3f} [s]")
 print(f"Time to apogee: {(t_break + flight.apogee_time):.3f} [s]")
 print(
-    f"Disreef time: {(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]"
+    f"Disreef time: "
+    f"{(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]"  # noqa: E501
 )
 print(f"Time of impact: {(t_break + flight.t_final):.3f} [s]")
 print(f"Max Mach: {flight.max_mach_number:.3f} [-]")
@@ -2063,7 +2067,8 @@ print(f"Max velocity: {flight.max_speed:.2f} [m/s]")
 print(f"Max acceleration: {flight.max_acceleration:.2f} [m/s^2]")
 print(f"Out of rail velocity: {flight.out_of_rail_velocity:.2f} [m/s]")
 print(
-    f"Rail departure angle of attack: {flight.angle_of_attack(flight.out_of_rail_time):.3f} [°]"
+    f"Rail departure angle of attack: "
+    f"{flight.angle_of_attack(flight.out_of_rail_time):.3f} [°]"
 )
 
 flight.stability_margin.plot()
@@ -2192,6 +2197,7 @@ if write_to_file:
         )
         plt.show()
 
-    # output_thrust_curve est déjà sauvegardé plus haut (au moment du tracé de la courbe)
+    # output_thrust_curve est déjà sauvegardé plus haut (au moment du tracé de
+    # la courbe)
 else:
     print("write_to_file=False : aucun fichier de sortie écrit.")
