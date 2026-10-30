@@ -4,14 +4,15 @@ file and populates a `Propellant` dataclass.
 Every field has a default value. Section header rows (no numeric value in
 column B) are automatically skipped.
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, fields, field
 from pathlib import Path
 from openpyxl import load_workbook
 from CoolProp.CoolProp import PropsSI
 
-SHEET_NAME   = "Propellant "   # note: trailing space in the Excel sheet name
-NAME_COLUMN  = "A"
+SHEET_NAME = "Propellant "  # note: trailing space in the Excel sheet name
+NAME_COLUMN = "A"
 VALUE_COLUMN = "B"
 FIRST_DATA_ROW = 2
 
@@ -19,67 +20,70 @@ FIRST_DATA_ROW = 2
 @dataclass
 class Propellant:
     # PARAMÈTRES
-    of_ratio:      float = 1.5
-    isp:           float = 220.0
-    thrust:        float = 6500.0
+    of_ratio: float = 1.5
+    isp: float = 220.0
+    thrust: float = 6500.0
     total_impulse: float = 40500.0
 
     # THRUST CURVE MODEL
-    thrust_curve_mode: str = "constant"   # "constant" ou "peaked"
-    derated_thrust:    float = 0.0        # [N] palier après le pic (mode "peaked" uniquement) ; 0 = 85% du pic par défaut
+    thrust_curve_mode: str = "constant"  # "constant" ou "peaked"
+    derated_thrust: float = (
+        0.0  # [N] palier après le pic (mode "peaked" uniquement) ; 0 = 85% du pic par défaut
+    )
 
     # MASS FLOW RATE
-    lox_boil_off:     float = 0.001
-    lox_prechill:     float = 4.362
-    lox_ignition:     float = 4.362
-    lox_ramp_up:      float = 2.623168871
-    lox_ramp_down:    float = 2.623168871
-    lox_cutoff:       float = 3.634769409
-    eth_ignition:     float = 0.0
-    eth_ramp_up:      float = 1.672500989
-    eth_ramp_down:    float = 1.672500989
-    eth_cutoff:       float = 2.29321782
+    lox_boil_off: float = 0.001
+    lox_prechill: float = 4.362
+    lox_ignition: float = 4.362
+    lox_ramp_up: float = 2.623168871
+    lox_ramp_down: float = 2.623168871
+    lox_cutoff: float = 3.634769409
+    eth_ignition: float = 0.0
+    eth_ramp_up: float = 1.672500989
+    eth_ramp_down: float = 1.672500989
+    eth_cutoff: float = 2.29321782
     eth_frac_cooling: float = 0.075
 
     # MASS
 
-    lox_temperature:  float = 90.15  # K
-    lox_pressure:     float = 6e6    # Pa
+    lox_temperature: float = 90.15  # K
+    lox_pressure: float = 6e6  # Pa
 
-    eth_temperature:  float = 293.15 # K
-    eth_pressure:     float = 6e6    # Pa    
-    eth_massic_frac:  float = 0.9    # massic fraction of ETH, H2O in Mischung
+    eth_temperature: float = 293.15  # K
+    eth_pressure: float = 6e6  # Pa
+    eth_massic_frac: float = 0.9  # massic fraction of ETH, H2O in Mischung
 
     # will be calculated after
-    m_lox_density:    float = field(init=False, default=1154)
-    m_eth_density:    float = field(init=False, default=810)
+    m_lox_density: float = field(init=False, default=1154)
+    m_eth_density: float = field(init=False, default=810)
 
-    m_eth_unused:  float = 0.405
-    m_lox_unused:  float = 0.577
-    m_n2:          float = 2.605
+    m_eth_unused: float = 0.405
+    m_lox_unused: float = 0.577
+    m_n2: float = 2.605
 
     # TIME
-    hold_time:      float = 300.0
-    prechill_time:  float = 0.2
+    hold_time: float = 300.0
+    prechill_time: float = 0.2
     ignition_delay: float = -0.05
-    ramp_up_time:   float = 0.4
+    ramp_up_time: float = 0.4
     ramp_down_time: float = 0.2
-    cutoff_time:    float = 0.025
+    cutoff_time: float = 0.025
 
     # FORCE
-    f_shutdown:  float = 0.0
+    f_shutdown: float = 0.0
     f_hold_down: float = 3300.0
-
 
     def __post_init__(self):
         # LOx
-        self.m_lox_density = PropsSI('D', 'T', self.lox_temperature, 'P', self.lox_pressure, 'Oxygen')
+        self.m_lox_density = PropsSI(
+            "D", "T", self.lox_temperature, "P", self.lox_pressure, "Oxygen"
+        )
 
         # eth
         h2o_massic_frac = 1 - self.eth_massic_frac
 
-        M_eth = PropsSI('molar_mass', 'Ethanol')
-        M_h2o = PropsSI('molar_mass', 'Water')
+        M_eth = PropsSI("molar_mass", "Ethanol")
+        M_h2o = PropsSI("molar_mass", "Water")
 
         n_eth = self.eth_massic_frac / M_eth
         n_h2o = h2o_massic_frac / M_h2o
@@ -89,7 +93,9 @@ class Propellant:
 
         fuel = f"Ethanol[{x_eth}]&Water[{x_h2o}]"
 
-        self.m_eth_density = PropsSI('D', 'T', self.eth_temperature, 'P', self.eth_pressure, fuel)
+        self.m_eth_density = PropsSI(
+            "D", "T", self.eth_temperature, "P", self.eth_pressure, fuel
+        )
 
 
 def _try_to_float(value) -> float | None:
@@ -125,7 +131,7 @@ def read_propellant(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Prope
             )
 
     ws = wb[sheet_name]
-    name_col_idx  = ord(NAME_COLUMN)  - ord("A") + 1
+    name_col_idx = ord(NAME_COLUMN) - ord("A") + 1
     value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1
 
     file_values: dict[str, float | str] = {}
