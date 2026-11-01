@@ -12,7 +12,13 @@ from openpyxl import load_workbook
 SHEET_NAME   = "Structure"
 NAME_COLUMN  = "A"
 VALUE_COLUMN = "B"
+COM1_VALUE_COLUMN = "C" # colonne utilisée pour les masses quand mode_CoM == 1
 FIRST_DATA_ROW = 2
+
+MASS_FIELDS = {
+    "m_bt", "m_ebay", "m_lox", "m_aerocover", "m_pbay1", "m_eth",
+    "m_pbay2", "m_avbay", "m_rebay", "m_nosecone", "m_fins",
+}
 
 
 @dataclass
@@ -129,7 +135,7 @@ def _try_to_bool(value) -> bool | None:
     return None
 
 
-def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Structure:
+def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME, mode_CoM_override: int | None = None) -> Structure:
     filepath = Path(filepath)
     if not filepath.exists():
         raise FileNotFoundError(f"File not found: {filepath}")
@@ -142,13 +148,16 @@ def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Struct
         )
 
     ws = wb[sheet_name]
-    name_col_idx  = ord(NAME_COLUMN)  - ord("A") + 1
-    value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1
+    name_col_idx  = ord(NAME_COLUMN)       - ord("A") + 1
+    value_col_idx = ord(VALUE_COLUMN)      - ord("A") + 1
+    com1_col_idx  = ord(COM1_VALUE_COLUMN) - ord("A") + 1
 
     bool_fields = {"tank_spherical_caps", "copv_spherical_caps"}
-    int_fields = {"mode"}
+    int_fields  = {"mode_CoM", "mode_Inertia"}
 
     file_values: dict[str, float | bool | int] = {}
+    com1_values: dict[str, float] = {}  # masses de la colonne C (cas mode_CoM == 1)
+
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
         name = ws.cell(row=row, column=name_col_idx).value
         if not isinstance(name, str):
@@ -167,6 +176,24 @@ def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Struct
         parsed = _try_to_float(raw)
         if parsed is not None:
             file_values[name] = int(parsed) if name in int_fields else parsed
+
+        # Colonne alternative pour les masses si mode_CoM == 1
+        if name in MASS_FIELDS:
+            com1_mass = _try_to_float(ws.cell(row=row, column=com1_col_idx).value)
+            if com1_mass is not None:
+                com1_values[name] = com1_mass
+
+    # Choix de la colonne selon mode_CoM
+    if mode_CoM_override is not None:
+        mode_CoM = int(mode_CoM_override)
+    else:
+        mode_CoM = int(file_values.get("mode_CoM", Structure.mode_CoM))
+    file_values["mode_CoM"] = mode_CoM
+    if mode_CoM == 1:
+        missing = MASS_FIELDS - set(com1_values)
+        if missing:
+            print(f"Warning [Structure]: mode_CoM=1 mais colonne C vide pour : {sorted(missing)}")
+        file_values.update(com1_values)
 
     valid = {f.name for f in fields(Structure)}
     unknown = set(file_values) - valid
