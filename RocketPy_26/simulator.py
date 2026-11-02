@@ -185,19 +185,25 @@ g = 9.80665
 # ============================================================
 # Rocket
 # ============================================================
+
+l_copv = copv_volume / (np.pi * r_int_copv **2 )
+#m_copv = 2.6
+m_copv = 4.6
+
 Boattail        = Bay("Boattail",          0,                                             0,         r_rocket,    l_bt,          m_bt,              "cylindrical")
 EngineBay       = Bay("EngineBay",         Boattail.length,                               0,         r_rocket,    l_ebay,        m_ebay+m_fins,            "tank")
 LOx             = Bay("LOx",               EngineBay.z + EngineBay.length,                0,         r_rocket,    l_lox,         m_lox,             "tank")
 Aerocover       = Bay("Aerocover",         pos_aerocover,                                 r_rocket,  r_aerocover, l_aerocover,   m_aerocover,       "semi-cylindrical")
-PressurantBay1_part1  = Bay("PressurantBay1",    LOx.z + LOx.length,                            0,         r_rocket,    0.378,       m_pbay1 - 2.605,           "cylindrical")
-PressurantBay1_part2  = Bay("PressurantBay1",    PressurantBay1_part1.z + PressurantBay1_part1.length,                            0.02,         r_rocket,    0.378,       2.605,           "cylindrical")
-ETH             = Bay("ETH",               PressurantBay1_part2.z + PressurantBay1_part2.length,      0,         r_rocket,    l_eth,         m_eth,             "tank")
+#PressurantBay1  = Bay("PressurantBay1",    LOx.z + LOx.length,                            0,         r_rocket,    l_pbay1,       m_pbay1,           "cylindrical")
+PressurantBay1  = Bay("PressurantBay1",    LOx.z + LOx.length,                            0,         r_rocket,    l_pbay1,       m_pbay1 - m_copv,  "cylindrical")
+COPV            = Bay("COPV",              PressurantBay1.z + PressurantBay1.length - l_copv,    0.02,       r_int_copv, l_copv, m_copv,            "cylindrical")
+ETH             = Bay("ETH",               PressurantBay1.z + PressurantBay1.length,      0,         r_rocket,    l_eth,         m_eth,             "tank")
 PressurantBay2  = Bay("PressurantBay2",    ETH.z + ETH.length,                            0,         r_rocket,    l_pbay2,       m_pbay2,           "cylindrical")
 AVBay           = Bay("AVBay",             PressurantBay2.z + PressurantBay2.length,      0,         r_rocket,    l_avbay,       m_avbay,           "cylindrical")
 RecoveryBay     = Bay("RecoveryBay",       AVBay.z + AVBay.length,                        0,         r_rocket,    l_rebay,       m_rebay,           "cylindrical")
 Nosecone        = Bay("Nosecone",          RecoveryBay.z + RecoveryBay.length,            0,         r_rocket,    l_nosecone,    m_nosecone,        "conical")
 
-rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1_part1, PressurantBay1_part2, ETH, PressurantBay2, AVBay, RecoveryBay, Nosecone]
+rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1, COPV, ETH, PressurantBay2, AVBay, RecoveryBay, Nosecone]
 
 
 # ============================================================
@@ -2649,23 +2655,20 @@ if write_to_file:
         plt.plot(t_plot, psi, label="ψ — Precession")
         plt.xlabel("Time [s]"); plt.ylabel("Angle [°]"); plt.title("Euler Angles")
         plt.legend(); plt.grid(True, alpha=0.3)
-        plt.savefig(os.path.join(DATA_DIR, f"euler_angles_{version}.png"), dpi=150, bbox_inches="tight")
+        plt.savefig(os.path.join(DATA_DIR, f"euler_angles_desaxe.png"), dpi=150, bbox_inches="tight")
         plt.show()
 
     if output_stability:
-        margin = np.array([
-            flight.stability_margin(t)
-            for t in t_plot
-        ])
+        margin = np.array([flight.stability_margin(t) for t in t_plot])
 
-        # Dossier dédié aux exports de stabilité
-        STABILITY_DIR = os.path.join(DATA_DIR, "stability_margin_csv")
+        # Dossier à côté de simulator.py
+        SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+        STABILITY_DIR = os.path.join(SCRIPT_DIR, "stability_margin_csv")
         os.makedirs(STABILITY_DIR, exist_ok=True)
 
-        # Export CSV
+        csv_path = os.path.join(STABILITY_DIR, "stability_margin_shiftm3.csv")
         df = pd.DataFrame({"time_s": t_plot, "stability_margin_cal": margin})
-        df.to_csv(os.path.join(STABILITY_DIR, f"stability_margin_desaxe.csv"), index=False)
-
+        df.to_csv(csv_path, index=False)
 
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, margin, color="firebrick")
