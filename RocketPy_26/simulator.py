@@ -2498,6 +2498,7 @@ firehorn2 = Rocket(
     coordinate_system_orientation="tail_to_nose",
 )
 
+
 firehorn2.add_cm_eccentricity(x=0, y=y_cm)
 firehorn2.add_motor(motor=B3, position=0)
 
