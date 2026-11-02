@@ -70,7 +70,6 @@ mode_Inertia             = struct.mode_Inertia
 l_center_of_mass         = struct.l_center_of_mass
 m_dry_measured           = struct.m_dry_measured
 r_rocket                 = struct.r_rocket
-drag_coeff_rocket        = struct.drag_coeff_rocket
 top_r_bt                 = struct.top_r_bt
 bottom_r_bt              = struct.bottom_r_bt
 l_bt                     = struct.l_bt
@@ -2268,8 +2267,8 @@ with open(copv_eth_csv_path, mode="w", newline="") as file:
 # ============================================================
 env = Environment(latitude=latitude, longitude=longitude, elevation=elevation)
 env.set_date(date=(annee, mois, jour, heure, minute))
-env.set_atmospheric_model(type="Windy", file="ECMWF")
-# env.set_atmospheric_model(type="standard_atmosphere")
+#env.set_atmospheric_model(type="Windy", file="ECMWF")
+env.set_atmospheric_model(type="standard_atmosphere")
 # env.set_atmospheric_model( # +90° crosswind
 #     type="custom_atmosphere",
 #     wind_u=-6.472,
@@ -2493,8 +2492,8 @@ firehorn2 = Rocket(
     radius=r_rocket,
     mass=m_dry,
     inertia=(Ix, Iy, Iz),
-    power_off_drag=drag_coeff_rocket,
-    power_on_drag=drag_coeff_rocket,
+    power_off_drag="cd_mach.csv",
+    power_on_drag="cd_mach.csv",
     center_of_mass_without_motor=z_cm,
     coordinate_system_orientation="tail_to_nose",
 )
