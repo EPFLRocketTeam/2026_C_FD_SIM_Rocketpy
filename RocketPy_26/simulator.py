@@ -34,6 +34,8 @@ from rocketpy import (
     CylindricalTank, UllageBasedTank, MassBasedTank, Function,
 )
 
+import pandas as pd
+
 # ============================================================
 # Input Values
 # ============================================================
@@ -187,14 +189,15 @@ Boattail        = Bay("Boattail",          0,                                   
 EngineBay       = Bay("EngineBay",         Boattail.length,                               0,         r_rocket,    l_ebay,        m_ebay+m_fins,            "tank")
 LOx             = Bay("LOx",               EngineBay.z + EngineBay.length,                0,         r_rocket,    l_lox,         m_lox,             "tank")
 Aerocover       = Bay("Aerocover",         pos_aerocover,                                 r_rocket,  r_aerocover, l_aerocover,   m_aerocover,       "semi-cylindrical")
-PressurantBay1  = Bay("PressurantBay1",    LOx.z + LOx.length,                            0,         r_rocket,    l_pbay1,       m_pbay1,           "cylindrical")
-ETH             = Bay("ETH",               PressurantBay1.z + PressurantBay1.length,      0,         r_rocket,    l_eth,         m_eth,             "tank")
+PressurantBay1_part1  = Bay("PressurantBay1",    LOx.z + LOx.length,                            0,         r_rocket,    0.378,       m_pbay1 - 2.605,           "cylindrical")
+PressurantBay1_part2  = Bay("PressurantBay1",    PressurantBay1_part1.z + PressurantBay1_part1.length,                            0.02,         r_rocket,    0.378,       2.605,           "cylindrical")
+ETH             = Bay("ETH",               PressurantBay1_part2.z + PressurantBay1_part2.length,      0,         r_rocket,    l_eth,         m_eth,             "tank")
 PressurantBay2  = Bay("PressurantBay2",    ETH.z + ETH.length,                            0,         r_rocket,    l_pbay2,       m_pbay2,           "cylindrical")
 AVBay           = Bay("AVBay",             PressurantBay2.z + PressurantBay2.length,      0,         r_rocket,    l_avbay,       m_avbay,           "cylindrical")
 RecoveryBay     = Bay("RecoveryBay",       AVBay.z + AVBay.length,                        0,         r_rocket,    l_rebay,       m_rebay,           "cylindrical")
 Nosecone        = Bay("Nosecone",          RecoveryBay.z + RecoveryBay.length,            0,         r_rocket,    l_nosecone,    m_nosecone,        "conical")
 
-rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1, ETH, PressurantBay2, AVBay, RecoveryBay, Nosecone]
+rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1_part1, PressurantBay1_part2, ETH, PressurantBay2, AVBay, RecoveryBay, Nosecone]
 
 
 # ============================================================
@@ -2268,8 +2271,8 @@ with open(copv_eth_csv_path, mode="w", newline="") as file:
 # ============================================================
 env = Environment(latitude=latitude, longitude=longitude, elevation=elevation)
 env.set_date(date=(annee, mois, jour, heure, minute))
-env.set_atmospheric_model(type="Windy", file="ECMWF")
-# env.set_atmospheric_model(type="standard_atmosphere")
+#env.set_atmospheric_model(type="Windy", file="ECMWF")
+env.set_atmospheric_model(type="standard_atmosphere")
 # env.set_atmospheric_model( # +90° crosswind
 #     type="custom_atmosphere",
 #     wind_u=-6.472,
@@ -2654,6 +2657,16 @@ if write_to_file:
             flight.stability_margin(t)
             for t in t_plot
         ])
+
+        # Dossier dédié aux exports de stabilité
+        STABILITY_DIR = os.path.join(DATA_DIR, "stability_margin_csv")
+        os.makedirs(STABILITY_DIR, exist_ok=True)
+
+        # Export CSV
+        df = pd.DataFrame({"time_s": t_plot, "stability_margin_cal": margin})
+        df.to_csv(os.path.join(STABILITY_DIR, f"stability_margin_desaxe.csv"), index=False)
+
+
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, margin, color="firebrick")
         plt.axhline(0, color="black", linewidth=0.8, linestyle="--")
