@@ -1381,9 +1381,9 @@ beta = np.deg2rad(beta_rail)
 t_array = t_total
 
 denominator = (
-    np.cos(beta)
-    - coeff_fr_rail
-    * np.sin(beta)
+    np.cos(alpha + beta)
+    + coeff_fr_rail
+    * np.sin(alpha + beta)
 )
 
 
@@ -1399,7 +1399,7 @@ F_HD = (
     - W
     * (
         np.cos(alpha)
-        - coeff_fr_rail
+        + coeff_fr_rail
         * np.sin(alpha)
     )
 ) / denominator
