@@ -187,7 +187,6 @@ g = 9.80665
 # ============================================================
 
 l_copv = copv_volume / (np.pi * r_int_copv **2 )
-#m_copv = 2.6
 m_copv = 4.6
 
 Boattail        = Bay("Boattail",          0,                                             0,         r_rocket,    l_bt,          m_bt,              "cylindrical")
@@ -2649,6 +2648,23 @@ if write_to_file:
         phi = np.array([flight.phi(t) for t in t_plot])
         theta = np.array([flight.theta(t) for t in t_plot])
         psi = np.array([flight.psi(t) for t in t_plot])
+
+        # Dossier à côté de simulator.py
+        SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+        STABILITY_DIR = os.path.join(SCRIPT_DIR, "angles_csv")
+        os.makedirs(STABILITY_DIR, exist_ok=True)
+
+        csv_path = os.path.join(STABILITY_DIR, "stability_margin_shiftm3.csv")
+        df = pd.DataFrame({
+            "time_s": t_plot,
+            "phi_deg": phi,
+            "theta_deg": theta,
+            "psi_deg": psi,
+        })
+        df.to_csv(csv_path, index=False)
+
+
+
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, phi, label="φ — Spin")
         plt.plot(t_plot, theta, label="θ — Nutation")
