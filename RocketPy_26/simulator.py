@@ -187,7 +187,8 @@ g = 9.80665
 # ============================================================
 
 l_copv = copv_volume / (np.pi * r_int_copv **2 )
-m_copv = 4.6
+m_copv = 4
+shift_copv = 0
 
 Boattail        = Bay("Boattail",          0,                                             0,         r_rocket,    l_bt,          m_bt,              "cylindrical")
 EngineBay       = Bay("EngineBay",         Boattail.length,                               0,         r_rocket,    l_ebay,        m_ebay+m_fins,            "tank")
@@ -195,7 +196,7 @@ LOx             = Bay("LOx",               EngineBay.z + EngineBay.length,      
 Aerocover       = Bay("Aerocover",         pos_aerocover,                                 r_rocket,  r_aerocover, l_aerocover,   m_aerocover,       "semi-cylindrical")
 #PressurantBay1  = Bay("PressurantBay1",    LOx.z + LOx.length,                            0,         r_rocket,    l_pbay1,       m_pbay1,           "cylindrical")
 PressurantBay1  = Bay("PressurantBay1",    LOx.z + LOx.length,                            0,         r_rocket,    l_pbay1,       m_pbay1 - m_copv,  "cylindrical")
-COPV            = Bay("COPV",              PressurantBay1.z + PressurantBay1.length - l_copv,    0.02,       r_int_copv, l_copv, m_copv,            "cylindrical")
+COPV            = Bay("COPV",              PressurantBay1.z + PressurantBay1.length - l_copv,    shift_copv,       r_int_copv, l_copv, m_copv,            "cylindrical")
 ETH             = Bay("ETH",               PressurantBay1.z + PressurantBay1.length,      0,         r_rocket,    l_eth,         m_eth,             "tank")
 PressurantBay2  = Bay("PressurantBay2",    ETH.z + ETH.length,                            0,         r_rocket,    l_pbay2,       m_pbay2,           "cylindrical")
 AVBay           = Bay("AVBay",             PressurantBay2.z + PressurantBay2.length,      0,         r_rocket,    l_avbay,       m_avbay,           "cylindrical")
@@ -2654,7 +2655,7 @@ if write_to_file:
         STABILITY_DIR = os.path.join(SCRIPT_DIR, "angles_csv")
         os.makedirs(STABILITY_DIR, exist_ok=True)
 
-        csv_path = os.path.join(STABILITY_DIR, "stability_margin_shiftm3.csv")
+        csv_path = os.path.join(STABILITY_DIR, "stability_margin_axial.csv")
         df = pd.DataFrame({
             "time_s": t_plot,
             "phi_deg": phi,
@@ -2682,7 +2683,7 @@ if write_to_file:
         STABILITY_DIR = os.path.join(SCRIPT_DIR, "stability_margin_csv")
         os.makedirs(STABILITY_DIR, exist_ok=True)
 
-        csv_path = os.path.join(STABILITY_DIR, "stability_margin_shiftm3.csv")
+        csv_path = os.path.join(STABILITY_DIR, "stability_margin_axial.csv")
         df = pd.DataFrame({"time_s": t_plot, "stability_margin_cal": margin})
         df.to_csv(csv_path, index=False)
 

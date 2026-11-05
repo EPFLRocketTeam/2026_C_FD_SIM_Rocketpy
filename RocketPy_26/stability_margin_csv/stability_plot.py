@@ -13,15 +13,16 @@ ANGLES_DIR = r"C:\Users\vthue\OneDrive\Documents\GitHub\2026_C_FD_SIM_Rocketpy\R
 OUT_DIR = SCRIPT_DIR
 
 labels = {
-    "baseline": "without shift",
-    "shiftm1": "with shift: m_copv = 2.6 kg",
-    "shiftm2": "with shift: m_copv = 3.6 kg",
-    "shiftm3": "with shift: m_copv = 4.6 kg",
+    "baseline": "without shift: uniform mass along PressurantBay1",
+    "axial"   : "without shift: m_dry_copv = 4 kg",
+    "shiftm1": "with shift: m_dry_copv = 3 kg",
+    "shiftm2": "with shift: m_dry_copv = 4 kg",
+    "shiftm3": "with shift: m_dry_copv = 5 kg",
 }
 
 def get_key(filename):
     """Extrait 'baseline', 'shiftm1', ... du nom de fichier."""
-    m = re.search(r"(baseline|shiftm\d+)", filename)
+    m = re.search(r"(baseline|axial|shiftm\d+)", filename)
     return m.group(1) if m else os.path.splitext(filename)[0]
 
 def read_csv(path):
