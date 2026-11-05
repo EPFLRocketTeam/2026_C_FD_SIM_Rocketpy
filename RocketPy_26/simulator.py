@@ -2059,7 +2059,7 @@ print(f"Burn out time: {(t_break + flight.rocket.motor.burn_out_time):.3f} [s]")
 print(f"Time to apogee: {(t_break + flight.apogee_time):.3f} [s]")
 print(
     f"Disreef time: "
-    f"{(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]"  # noqa: E501
+    f"{(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]"  # noqa: E501  # pylint: disable=line-too-long
 )
 print(f"Time of impact: {(t_break + flight.t_final):.3f} [s]")
 print(f"Max Mach: {flight.max_mach_number:.3f} [-]")
