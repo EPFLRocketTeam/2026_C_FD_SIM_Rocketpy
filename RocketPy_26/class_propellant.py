@@ -19,7 +19,7 @@ FIRST_DATA_ROW = 2
 
 @dataclass
 class Propellant:
-    # PARAMÈTRES
+    # Parameters
     of_ratio: float = 1.5
     isp: float = 220.0
     thrust: float = 6500.0
@@ -28,8 +28,8 @@ class Propellant:
     # THRUST CURVE MODEL
     thrust_curve_mode: str = "constant"  # "constant" ou "peaked"
     derated_thrust: float = (
-        0.0  # [N] palier après le pic (mode "peaked" uniquement) ;
-        # 0 = 85% du pic par défaut
+        0.0  # [N] post-peak plateau, used only in "peaked" mode;
+        # 0 defaults to 85% of the peak thrust.
     )
 
     # MASS FLOW RATE

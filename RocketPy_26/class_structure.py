@@ -12,7 +12,7 @@ from openpyxl import load_workbook
 SHEET_NAME   = "Structure"
 NAME_COLUMN  = "A"
 VALUE_COLUMN = "B"
-COM1_VALUE_COLUMN = "D" # colonne utilisée pour les masses quand mode_CoM == 1
+COM1_VALUE_COLUMN = "D"  # Mass column used when mode_CoM == 1.
 FIRST_DATA_ROW = 2
 
 MASS_FIELDS = {
@@ -24,8 +24,8 @@ MASS_FIELDS = {
 @dataclass
 class Structure:
     # ROCKET
-    mode_CoM:  int = 0  # Mode 0 : mode normal où on utilise toute les valeurs insérées; Mode 1: mode où on insère une masse et un CoM mesuré et les baies servent pour les masses additionelles
-    mode_Inertia: int = 0 # Mode 0 : mode normal où on utilise toute les valeurs insérées; Mode 1: mode où on utilise les valeurs hardcodées de EuRoC1
+    mode_CoM: int = 0  # Mode 0 uses input values; mode 1 uses measured mass and CoM.
+    mode_Inertia: int = 0  # Mode 0 uses input values; mode 1 uses hardcoded EuRoC1 values.
     l_center_of_mass: float = 266
     m_dry_measured: float = 84500
     r_rocket:     float = 0.1215
@@ -83,7 +83,7 @@ class Structure:
     l_nosecone: float = 1.003
     m_nosecone: float = 5.838
 
-    # TANK (LOX et Ethanol partagent cette même géométrie)
+    # TANK (LOX and ethanol share this geometry).
     r_int: float = 0.115
     tank_spherical_caps: bool = False
     tank_volume: float = 0.016  # [m^3] volume interne total voulu
@@ -155,7 +155,7 @@ def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Struct
     bool_fields = {"tank_spherical_caps", "copv_spherical_caps"}
 
     file_values: dict[str, float | bool] = {}
-    com1_values: dict[str, float] = {} # colonne de masses dans le cas CoM == 1
+    com1_values: dict[str, float] = {}  # Mass column used when CoM == 1.
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
         name = ws.cell(row=row, column=name_col_idx).value
         if not isinstance(name, str):
@@ -175,13 +175,13 @@ def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Struct
         if parsed is not None:
             file_values[name] = parsed
 
-        # Colonne alternative pour les masses si CoM == 1
+        # Read the alternative mass column when CoM mode 1 is enabled.
         if name in MASS_FIELDS:
             com1_mass = _try_to_float(ws.cell(row=row, column=com1_col_idx).value)
             if com1_mass is not None:
                 com1_values[name] = com1_mass
 
-    # Choix de la colonne selon mode_CoM
+    # Select the mass column according to mode_CoM.
     mode_CoM = int(file_values.get("mode_CoM", Structure.mode_CoM))
     if mode_CoM == 1:
         file_values.update(com1_values)

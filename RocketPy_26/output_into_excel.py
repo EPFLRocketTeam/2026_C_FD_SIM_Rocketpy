@@ -60,11 +60,12 @@ def write_flight_outputs_vertical(
     wet_mass: float | None = None,
     nominal_total_impulse: float | None = None,
 ) -> dict[str, Any]:
-    """Cherche l'Excel dans le dossier indiqué et écrit les résultats
-    verticalement. dry_mass/wet_mass sont ajoutés en tête (section MASSE)
-    s'ils sont fournis. nominal_total_impulse, si fourni, remplace la
-    valeur 'Total impulse' calculée par RocketPy (qui exclut la phase
-    hold-down) par l'impulsion nominale demandée (qui l'inclut)."""
+    """Find the Excel file in the indicated directory and write results
+    vertically. Add dry_mass and wet_mass at the top of the mass section,
+    when they are given.
+    If it is given the nominal_total_impulse replaces the RocketPy's calculated 
+    'Total impulse' (which excludes the hold-down phase) with the 
+    requested nominal impulse (which includes it)."""
     filepath = Path(directory) / f"{version}.xlsx"
 
     if not filepath.exists():

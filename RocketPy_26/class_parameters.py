@@ -25,8 +25,8 @@ class Parameters:
     n_points: int = 1000
     write_to_file: bool = False
 
-    # SORTIES SOUHAITÉES (n'a d'effet que si write_to_file=True)
-    output_general: bool = True  # résultats généraux (dans la feuille Excel Simulation)
+    # Requested outputs (effective only when write_to_file=True).
+    output_general: bool = True  # General results in the Excel Simulation sheet.
     output_euler_angles: bool = False  # euler_angles.png
     output_stability: bool = False  # stability_margin.png
     output_trajectory: bool = False  # trajectory.png

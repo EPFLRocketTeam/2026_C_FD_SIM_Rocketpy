@@ -1,16 +1,14 @@
 """
 simulator.py
 
-Script de simulation FH2/EuRoC — fusionne les versions "constant thrust" et
-"peak thrust" en un seul fichier. Le modèle de courbe de poussée et les
-sorties souhaitées se choisissent directement dans l'Excel (feuilles
-Propellant / Parameters), plus besoin de deux notebooks séparés.
+FH2/EuRoC simulation script combining the "constant thrust" and "peak thrust"
+versions in one file. The thrust-curve model and requested outputs are selected
+directly in the Excel Propellant and Parameters sheets.
 
-Usage : lancer ce script tel quel (ou copier les sections dans des cellules
-Jupyter, elles sont découpées par des commentaires "# ---" comme dans les
-notebooks d'origine). Le fichier Excel pointé par FILE doit déjà exister et
-être nommé "{version}_SIM.xlsx" pour correspondre à ce que write_to_file va
-chercher à mettre à jour.
+Usage: run this script directly or copy its sections into Jupyter cells. The
+sections are separated by "# ---" comments. The Excel file referenced by FILE
+must already exist and be named "{version}_SIM.xlsx" so write_to_file can update
+it.
 """
 
 # ============================================================
@@ -37,25 +35,22 @@ from rocketpy import (
 # ============================================================
 # Input Values
 # ============================================================
-# Se placer dans le dossier de ce script, peu importe d'où il est lancé.
-# Résout d'un coup TOUS les chemins relatifs utilisés plus bas (lecture de
-# l'Excel, écriture des .eng/.csv/.png, mise à jour de "{version}_SIM.xlsx").
-# (En notebook Jupyter, __file__ n'existe pas : on garde alors le dossier
-# courant du kernel, qui est déjà correct dans l'usage normal.)
+# Work from the script directory regardless of the launch directory. This
+# resolves relative paths for reading Excel files, writing .eng/.csv/.png files,
+# and updating "{version}_SIM.xlsx". While using the Jupyter Notebook, __file__ is unavailable, so the
+# kernel's current directory is kept.
 try:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 except NameError:
     pass
 
-# Dossier de données : déduit automatiquement du fichier Excel indiqué
-# ci-dessous (FILE). Change juste FILE pour chaque nouvelle run — le
-# dossier qui le contient devient le dossier où tout est écrit
-# (.eng, .csv, .png, "{version}_SIM.xlsx"). Le template TEMPLATE_SIM.xlsx
-# lui-même reste au niveau du code, jamais modifié.
+# The data directory is inferred from FILE below. Change FILE for each run; its
+# containing directory becomes the output directory for generated files(.eng, .csv, .png, "{version}_SIM.xlsx"). 
+# The TEMPLATE_SIM.xlsx file remains at the code level and is never modified.
 #
-# Exemple : crée un dossier "v1" contenant une copie du template (par ex.
-# renommée "v1.xlsx"), puis mets FILE = "v1/v1.xlsx" ci-dessous.
-FILE = "EuRoC_rapport/EuRoC_rapport.xlsx"  # <-- à adapter : chemin vers TON fichier de travail
+# Example: create a directory named "v1" containing a copy of the template,
+# rename it to "v1.xlsx", and set FILE = "v1/v1.xlsx" below.
+FILE = "EuRoC_rapport/EuRoC_rapport.xlsx"  # CHANGE : path to your working Excel file.
 
 DATA_DIR = os.path.dirname(os.path.abspath(FILE)) or "."
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -125,7 +120,7 @@ isp                               = prop.isp
 thrust                            = prop.thrust
 total_impulse                     = prop.total_impulse
 thrust_curve_mode                 = prop.thrust_curve_mode
-derated_thrust_in                 = prop.derated_thrust  # 0 = non spécifié -> défaut 85% du pic
+derated_thrust_in                 = prop.derated_thrust  # 0 defaults to 85% of peak thrust.
 lox_boil_off_mass_flow_rate       = prop.lox_boil_off
 lox_prechill_mass_flow_rate       = prop.lox_prechill
 lox_ignition_mass_flow_rate       = prop.lox_ignition
@@ -197,7 +192,7 @@ rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1, ETH, PressurantBa
 
 
 # ============================================================
-# CoM et moment d'inertie
+# Center of mass and moment of inertia.
 # ============================================================
 if mode_CoM == 0:
     m_dry = sum(bay.mass for bay in rocket)
@@ -257,11 +252,11 @@ if mode_Inertia == 0:
         Iy += Iy_local + bay.mass * (dx**2 + dz**2)
         Iz += Iz_local + bay.mass * (dx**2 + dy**2)
 
-    # si mode_CoM == 1, il faut ajouter l'effet de la m_dry_measured
+    # When mode_CoM == 1, include the effect of m_dry_measured.
     if mode_CoM == 1:
         L_rocket = Nosecone.z + Nosecone.length
 
-        # Inertie propre : approximation cylindre homogène
+        # Approximate the measured mass as a homogeneous cylinder.
         Ix_meas = m_dry_measured * (3 * r_rocket**2 + L_rocket**2) / 12
         Iy_meas = Ix_meas
         Iz_meas = 0.5 * m_dry_measured * r_rocket**2
@@ -291,8 +286,6 @@ else:
         "Setting Inertia to 0."
     )
 
-
-#print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
 
 # ============================================================
 # Propulsion reference quantities
@@ -2310,32 +2303,30 @@ pressurizing_gas = Fluid(name="N2", density=600)
 
 
 # ============================================================
-# Tanks — hauteur dérivée du volume + rayon + choix de calottes
+# Tanks: height derived from volume, radius, and cap selection.
 # ============================================================
 
 def compute_tank_height(volume: float, radius: float, spherical_caps: bool) -> float:
     """
-    Calcule le paramètre 'height' à passer à rocketpy.CylindricalTank pour
-    obtenir un volume interne total donné.
+    Calculate the ``height`` parameter for ``rocketpy.CylindricalTank`` to
+    obtain a given total internal volume.
 
-    Cas calottes plates (spherical_caps=False) — cylindre pur :
+        For flat caps (spherical_caps=False), the tank is a pure cylinder:
         V = π r² H
         => H = V / (π r²)
-        (height passé à RocketPy = H, directement la hauteur cylindrique)
+        (height passed to RocketPy equals the cylindrical height directly).
 
-    Cas calottes sphériques (spherical_caps=True) :
-        Les deux calottes hémisphériques (rayon r) forment ensemble le
-        volume d'une sphère complète :
+    For spherical caps (spherical_caps=True), the two hemispherical caps (radius r)
+    together form the volume of a complete sphere:
             V_calottes = (4/3) π r³
-        Le volume total est celui du cylindre central + les deux calottes :
+        The total volume is the central cylinder plus both caps:
             V = π r² H_cyl + (4/3) π r³
             => H_cyl = (V - (4/3) π r³) / (π r²)
 
-        RocketPy attend en paramètre 'height' la hauteur TOTALE du réservoir
-        (partie cylindrique + les deux calottes ; chaque calotte a une
-        hauteur = r, donc height = H_cyl + 2r) — passer height=H_total avec
-        spherical_caps=True réduit automatiquement la portion cylindrique à
-        H_total - 2r en interne, côté RocketPy.
+        RocketPy expects ``height`` to be the TOTAL tank height (the cylindrical
+        section plus both caps; each cap has height r, so height = H_cyl + 2r).
+        Passing height=H_total with spherical_caps=True automatically reduces
+        the cylindrical section to H_total - 2r internally, which is done by RocketPy.
             height = H_cyl + 2r
     """
     if radius <= 0:
@@ -2366,7 +2357,6 @@ lox_tank = UllageBasedTank(
     liquid=lox, 
     ullage=lox_tank_ullage,
 )
-#print("Tank volume (recalculé par RocketPy):", tank_geometry_lox.volume())
 
 ethanol_tank = UllageBasedTank(
     name="Ethanol Tank", 
@@ -2555,9 +2545,8 @@ flight = Flight(
 
 
 # ============================================================
-# Nettoyage des fichiers intermédiaires (.eng / .csv) si save_files=False
-# Ils ne sont plus nécessaires une fois le Flight construit : RocketPy les
-# a déjà lus en mémoire au moment de créer le moteur/les réservoirs.
+# Remove intermediate files (.eng / .csv) when save_files=False. They are no
+# longer needed once Flight is built because RocketPy has already loaded them.
 # ============================================================
 if not save_files:
     intermediate_files = [
@@ -2578,7 +2567,7 @@ if not save_files:
 
 
 # ============================================================
-# Outputs — pilotés par les cases output_* de l'Excel (feuille Parameters)
+# Outputs controlled by the output_* options in the Excel Parameters sheet.
 # ============================================================
 print(f"Impulse (nominale, hold-down inclus): {nominal_total_impulse} [Ns]")
 print(f"Burn time: {t_cutoff_end:.3f} [s]")
@@ -2617,7 +2606,7 @@ flight.dynamic_pressure.plot()
 
 
 if write_to_file:
-    # --- Résultats généraux -> feuille 'Simulation' de l'Excel ---
+    # --- General results -> the Excel 'Simulation' sheet ---
     if output_general:
         import importlib
         import output_into_excel
@@ -2663,9 +2652,8 @@ if write_to_file:
         plt.show()
 
     if output_stability:
-        # Centre de pression au cours du temps : RocketPy donne cp_position
-        # comme fonction du Mach (pas directement du temps), on compose donc
-        # avec le Mach instantané pour obtenir cp(t).
+        # Center of pressure in respect to time : RocketPy provides cp_position 
+        # as a function of Mach rather than time,so we evaluate it with the instantaneous Mach to obtain cp(t).
         mach_t = np.array([flight.mach_number(t) for t in t_plot])
         cp_position = np.array([firehorn2.cp_position(m) for m in mach_t])
         cg_position = np.array([firehorn2.center_of_mass(t) for t in t_plot])
@@ -2704,6 +2692,6 @@ if write_to_file:
         plt.savefig(os.path.join(DATA_DIR, f"acceleration_{version}.png"), dpi=150, bbox_inches="tight")
         plt.show()
 
-    # output_thrust_curve est déjà sauvegardé plus haut (au moment du tracé de la courbe)
+    # output_thrust_curve was already saved above when the thrust curve was plotted.
 else:
     print("write_to_file=False : aucun fichier de sortie écrit.")
