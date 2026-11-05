@@ -46,57 +46,64 @@ from rocketpy import (
 
 
 class FigureNavigator:
-    """Provide previous and next controls for the generated Matplotlib figures."""
+    """Display all generated plots in one persistent Matplotlib window."""
 
     def __init__(self):
         self.figures = []
+        self.images = []
         self.current_index = 0
+        self.viewer_figure = None
+        self.viewer_axes = None
+        self.image_artist = None
 
     def add_current_figure(self):
-        """Register the active figure and add navigation controls to it."""
+        """Register and hide the active source figure."""
         figure = plt.gcf()
         if figure in self.figures:
             return
 
         self.figures.append(figure)
-        previous_axes = figure.add_axes([0.67, 0.01, 0.14, 0.045])
-        next_axes = figure.add_axes([0.83, 0.01, 0.14, 0.045])
-        previous_button = Button(previous_axes, "← Previous")
-        next_button = Button(next_axes, "Next →")
-        previous_button.on_clicked(lambda _event, fig=figure: self.show_relative(fig, -1))
-        next_button.on_clicked(lambda _event, fig=figure: self.show_relative(fig, 1))
-        figure._navigation_controls = (previous_button, next_button)
         self._set_visible(figure, False)
 
-    def show_relative(self, current_figure, offset):
-        """Show the figure before or after ``current_figure`` in the sequence."""
-        active_figures = [
-            figure for figure in self.figures if plt.fignum_exists(figure.number)
-        ]
-        if len(active_figures) < 2:
+    def show_relative(self, offset):
+        """Replace the current plot with the previous or next plot."""
+        if len(self.images) < 2:
             return
 
-        current_index = active_figures.index(current_figure)
-        self.current_index = (current_index + offset) % len(active_figures)
-        self._set_visible(current_figure, False)
-        self._set_visible(active_figures[self.current_index], True)
+        self.current_index = (self.current_index + offset) % len(self.images)
+        self.image_artist.set_data(self.images[self.current_index])
+        self.viewer_figure.canvas.draw_idle()
 
     def show_first_figure(self):
-        """Show the first generated figure and keep the GUI event loop active."""
+        """Open the persistent viewer with the first generated plot."""
         if not self.figures:
             return
 
+        self.images = [self._capture_figure(figure) for figure in self.figures]
+        viewer_size = self.figures[0].get_size_inches()
+        for figure in self.figures:
+            plt.close(figure)
+
         self.current_index = 0
-        self._set_visible(self.figures[self.current_index], True)
-        while plt.get_fignums():
-            active_figures = [
-                figure for figure in self.figures if plt.fignum_exists(figure.number)
-            ]
-            if not active_figures:
-                break
-            if self.figures[self.current_index] not in active_figures:
-                self.current_index = 0
-            self.figures[self.current_index].canvas.start_event_loop(0.1)
+        self.viewer_figure, self.viewer_axes = plt.subplots(figsize=viewer_size)
+        self.viewer_axes.set_position([0.02, 0.09, 0.96, 0.89])
+        self.viewer_axes.axis("off")
+        self.image_artist = self.viewer_axes.imshow(self.images[self.current_index])
+
+        previous_axes = self.viewer_figure.add_axes([0.67, 0.015, 0.14, 0.045])
+        next_axes = self.viewer_figure.add_axes([0.83, 0.015, 0.14, 0.045])
+        previous_button = Button(previous_axes, "← Previous")
+        next_button = Button(next_axes, "Next →")
+        previous_button.on_clicked(lambda _event: self.show_relative(-1))
+        next_button.on_clicked(lambda _event: self.show_relative(1))
+        self.viewer_figure._navigation_controls = (previous_button, next_button)
+        plt.show()
+
+    @staticmethod
+    def _capture_figure(figure):
+        """Render a source figure to an image for the persistent viewer."""
+        figure.canvas.draw()
+        return np.array(figure.canvas.buffer_rgba())
 
     @staticmethod
     def _set_visible(figure, visible):
