@@ -23,6 +23,9 @@ import csv
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
+
+plt.ioff()
 
 from class_bay import Bay
 from class_structure import read_structure
@@ -40,6 +43,100 @@ from rocketpy import (
     MassBasedTank,
     Function,
 )
+
+
+class FigureNavigator:
+    """Provide previous and next controls for the generated Matplotlib figures."""
+
+    def __init__(self):
+        self.figures = []
+        self.current_index = 0
+
+    def add_current_figure(self):
+        """Register the active figure and add navigation controls to it."""
+        figure = plt.gcf()
+        if figure in self.figures:
+            return
+
+        self.figures.append(figure)
+        previous_axes = figure.add_axes([0.67, 0.01, 0.14, 0.045])
+        next_axes = figure.add_axes([0.83, 0.01, 0.14, 0.045])
+        previous_button = Button(previous_axes, "← Previous")
+        next_button = Button(next_axes, "Next →")
+        previous_button.on_clicked(lambda _event, fig=figure: self.show_relative(fig, -1))
+        next_button.on_clicked(lambda _event, fig=figure: self.show_relative(fig, 1))
+        figure._navigation_controls = (previous_button, next_button)
+        self._set_visible(figure, False)
+
+    def show_relative(self, current_figure, offset):
+        """Show the figure before or after ``current_figure`` in the sequence."""
+        active_figures = [
+            figure for figure in self.figures if plt.fignum_exists(figure.number)
+        ]
+        if len(active_figures) < 2:
+            return
+
+        current_index = active_figures.index(current_figure)
+        self.current_index = (current_index + offset) % len(active_figures)
+        self._set_visible(current_figure, False)
+        self._set_visible(active_figures[self.current_index], True)
+
+    def show_first_figure(self):
+        """Show the first generated figure and keep the GUI event loop active."""
+        if not self.figures:
+            return
+
+        self.current_index = 0
+        self._set_visible(self.figures[self.current_index], True)
+        while plt.get_fignums():
+            active_figures = [
+                figure for figure in self.figures if plt.fignum_exists(figure.number)
+            ]
+            if not active_figures:
+                break
+            if self.figures[self.current_index] not in active_figures:
+                self.current_index = 0
+            self.figures[self.current_index].canvas.start_event_loop(0.1)
+
+    @staticmethod
+    def _set_visible(figure, visible):
+        """Show or hide a figure without closing it."""
+        plt.figure(figure)
+        manager = getattr(figure.canvas, "manager", None)
+        window = getattr(manager, "window", None)
+        if window is not None:
+            method_name = "show" if visible else "hide"
+            method = getattr(window, method_name, None)
+            if method is None:
+                method_name = "deiconify" if visible else "withdraw"
+                method = getattr(window, method_name, None)
+            if method is not None:
+                method()
+                return
+
+        if visible:
+            if manager is not None:
+                manager.show()
+            figure.canvas.draw_idle()
+
+
+FIGURE_NAVIGATOR = FigureNavigator()
+
+
+def show_figure_non_blocking():
+    """Register the active figure for previous and next navigation."""
+    FIGURE_NAVIGATOR.add_current_figure()
+
+
+def capture_rocketpy_figure(plot_function):
+    """Capture a RocketPy plot without invoking its blocking display call."""
+    original_show = plt.show
+    try:
+        plt.show = lambda *args, **kwargs: show_figure_non_blocking()
+        plot_function()
+    finally:
+        plt.show = original_show
+
 
 # ============================================================
 # Input Values
@@ -1580,7 +1677,7 @@ if write_to_file and output_thrust_curve:
         bbox_inches="tight",
     )
 
-    plt.show()
+    show_figure_non_blocking()
 
 else:
 
@@ -2037,7 +2134,7 @@ firehorn2.add_parachute(
     noise=(0, 0, 0),
 )
 
-firehorn2.draw()
+capture_rocketpy_figure(firehorn2.draw)
 
 
 # ============================================================
@@ -2099,7 +2196,7 @@ print(
     f"Rail departure angle of attack: {flight.angle_of_attack(flight.out_of_rail_time):.3f} [°]"
 )
 
-flight.stability_margin.plot()
+capture_rocketpy_figure(flight.stability_margin.plot)
 flight.prints.stability_margin()
 print("Rail exit velocity:", flight.out_of_rail_velocity)
 print("Rail exit stability:", flight.out_of_rail_stability_margin)
@@ -2109,8 +2206,8 @@ print("Max Q time:", t_break + flight.max_dynamic_pressure_time)
 tq = flight.max_dynamic_pressure_time
 print("AoA at max-Q:", flight.angle_of_attack(tq))
 print("SM at max-Q:", flight.stability_margin(tq))
-flight.angle_of_attack.plot()
-flight.dynamic_pressure.plot()
+capture_rocketpy_figure(flight.angle_of_attack.plot)
+capture_rocketpy_figure(flight.dynamic_pressure.plot)
 
 
 if write_to_file:
@@ -2152,7 +2249,7 @@ if write_to_file:
             dpi=150,
             bbox_inches="tight",
         )
-        plt.show()
+        show_figure_non_blocking()
 
     if output_stability:
         margin = np.array([flight.stability_margin(t) for t in t_plot])
@@ -2168,7 +2265,7 @@ if write_to_file:
             dpi=150,
             bbox_inches="tight",
         )
-        plt.show()
+        show_figure_non_blocking()
 
     if output_stability:
         # Center of pressure in respect to time : RocketPy provides cp_position
@@ -2198,7 +2295,7 @@ if write_to_file:
             dpi=150,
             bbox_inches="tight",
         )
-        plt.show()
+        show_figure_non_blocking()
 
     if output_trajectory:
         altitude = np.array([flight.altitude(t) for t in t_plot])
@@ -2213,7 +2310,7 @@ if write_to_file:
             dpi=150,
             bbox_inches="tight",
         )
-        plt.show()
+        show_figure_non_blocking()
 
     if output_velocity:
         speed = np.array([flight.speed(t) for t in t_plot])
@@ -2228,7 +2325,7 @@ if write_to_file:
             dpi=150,
             bbox_inches="tight",
         )
-        plt.show()
+        show_figure_non_blocking()
 
     if output_acceleration:
         accel = np.array([flight.acceleration(t) for t in t_plot])
@@ -2243,8 +2340,12 @@ if write_to_file:
             dpi=150,
             bbox_inches="tight",
         )
-        plt.show()
+        show_figure_non_blocking()
 
     # output_thrust_curve was already saved above when the thrust curve was plotted.
 else:
     print("write_to_file=False : aucun fichier de sortie écrit.")
+
+
+# Open the first figure; use its Previous and Next buttons to browse all plots.
+FIGURE_NAVIGATOR.show_first_figure()
