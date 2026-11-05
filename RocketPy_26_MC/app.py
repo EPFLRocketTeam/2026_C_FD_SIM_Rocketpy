@@ -116,8 +116,8 @@ LAUNCH_SITES = {
 
 
 @st.cache_data
-def load_defaults(excel_path: str, _mtime: float):
-    structure = read_structure(excel_path)
+def load_defaults(excel_path: str, _mtime: float, mode_com: int | None = None):
+    structure = read_structure(excel_path, mode_CoM_override=mode_com)
     propellant = read_propellant(excel_path)
     parameters = read_parameters(excel_path)
     return structure, propellant, parameters
@@ -128,7 +128,8 @@ def load_defaults(excel_path: str, _mtime: float):
 # ----------------------------------------------------------------------
 PARAM_HELP = {
     # --- Structure ---
-    "mode": "0 = compute dry mass/CoM/inertia from the bays below. 1 = use a measured dry mass + CoM (m_dry_measured, l_center_of_mass) with the bays as additional masses only — inertia is then a fixed measured value, not recomputed.",
+    "mode_CoM": "0 = compute dry mass/CoM from the bays below. 1 = use a measured dry mass + CoM (m_dry_measured, l_center_of_mass) with the bays as additional masses only — inertia is then a fixed measured value, not recomputed.",
+    "mode_Inertia": "0 = compute inertia from the bays below. 1 = use a measured dry mass + CoM (m_dry_measured, l_center_of_mass) with the bays as additional masses only — inertia is then a fixed measured value, not recomputed.",
     "l_center_of_mass": "Measured center-of-mass axial position (mode 1 only) [mm or same unit as bay positions]",
     "m_dry_measured": "Measured dry mass of the reference vehicle (mode 1 only) [kg]",
     "r_rocket": "Rocket body outer radius [m]",
@@ -353,6 +354,7 @@ with st.sidebar:
     st.divider()
     st.subheader("Configuration")
     model_name = st.selectbox("Model", list(MODELS.keys()))
+    mode_choice = st.selectbox("mode_CoM", ["Excel", 0, 1], key="mode_com_choice")
 
 excel_path = MODELS[model_name]
 if not Path(excel_path).exists():
@@ -362,10 +364,10 @@ if not Path(excel_path).exists():
     )
     st.stop()
 
+mode_com = None if mode_choice == "Excel" else int(mode_choice)
 default_structure, default_propellant, default_parameters = load_defaults(
-    excel_path, os.path.getmtime(excel_path)
+    excel_path, os.path.getmtime(excel_path), mode_com
 )
-
 
 # ========================================================================
 # Mode : Simulation normale
@@ -381,7 +383,8 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
 
     with tab_structure:
         structure_vals = render_dataclass_form(
-            default_structure, "struct", advanced, ESSENTIAL_FIELDS["Structure"]
+            default_structure, f"struct{default_structure.mode_CoM}", advanced,
+            ESSENTIAL_FIELDS["Structure"], exclude_fields={"mode_CoM"},
         )
 
     with tab_propellant:
@@ -857,7 +860,8 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
     )
     with tab_structure:
         structure_vals = render_dataclass_form(
-            default_structure, "mcs", advanced, ESSENTIAL_FIELDS["Structure"]
+            default_structure, f"mcs{default_structure.mode_CoM}", advanced,
+            ESSENTIAL_FIELDS["Structure"], exclude_fields={"mode_CoM"},
         )
     with tab_propellant:
         propellant_vals = render_dataclass_form(

@@ -16,31 +16,22 @@ chercher à mettre à jour.
 # ============================================================
 # Imports
 # ============================================================
-import os
-import sys
+import sys, os
+sys.path.append(os.path.join(os.getcwd(), '..', 'Excel'))
 
 import csv
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-sys.path.append(os.path.join(os.getcwd(), "..", "Excel"))
+from class_bay        import Bay
+from class_structure  import read_structure
+from class_propellant import read_propellant
+from class_parameters import read_parameters
 
-from class_bay import Bay  # noqa: E402
-from class_structure import read_structure  # noqa: E402
-from class_propellant import read_propellant  # noqa: E402
-from class_parameters import read_parameters  # noqa: E402
-
-from rocketpy import (  # noqa: E402
-    Environment,
-    LiquidMotor,
-    Rocket,
-    Flight,
-    Fluid,
-    CylindricalTank,
-    UllageBasedTank,
-    MassBasedTank,
-    Function,
+from rocketpy import (
+    Environment, LiquidMotor, Rocket, Flight, Fluid,
+    CylindricalTank, UllageBasedTank, MassBasedTank, Function,
 )
 
 # ============================================================
@@ -64,216 +55,190 @@ except NameError:
 #
 # Exemple : crée un dossier "v1" contenant une copie du template (par ex.
 # renommée "v1.xlsx"), puis mets FILE = "v1/v1.xlsx" ci-dessous.
-FILE = "EuRoC_rapport/EuRoC_rapport.xlsx"  # <-- à adapter : chemin vers TON
-# fichier de travail
+FILE = "EuRoC_rapport/EuRoC_rapport.xlsx"  # <-- à adapter : chemin vers TON fichier de travail
 
 DATA_DIR = os.path.dirname(os.path.abspath(FILE)) or "."
 os.makedirs(DATA_DIR, exist_ok=True)
 
 struct = read_structure(FILE)
-prop = read_propellant(FILE)
+prop   = read_propellant(FILE)
 params = read_parameters(FILE)
 
 # Structure
-mode = struct.mode
-l_center_of_mass = struct.l_center_of_mass
-m_dry_measured = struct.m_dry_measured
-r_rocket = struct.r_rocket
-drag_coeff_rocket = struct.drag_coeff_rocket
-top_r_bt = struct.top_r_bt
-bottom_r_bt = struct.bottom_r_bt
-l_bt = struct.l_bt
-m_bt = struct.m_bt
-r_nozzle = struct.r_nozzle
-l_ebay = struct.l_ebay
-m_ebay = struct.m_ebay
-pos_lox = struct.pos_lox
-l_lox = struct.l_lox
-m_lox = struct.m_lox
-pos_aerocover = struct.pos_aerocover
-m_aerocover = struct.m_aerocover
-l_aerocover = struct.l_aerocover
-r_aerocover = struct.r_aerocover
-pos_copv_mbay = struct.pos_copv_mbay
-l_pbay1 = struct.l_pbay1
-m_pbay1 = struct.m_pbay1
-pos_eth = struct.pos_eth
-l_eth = struct.l_eth
-m_eth = struct.m_eth
-pos_copv_pbay = struct.pos_copv_pbay
-l_pbay2 = struct.l_pbay2
-m_pbay2 = struct.m_pbay2
-l_avbay = struct.l_avbay
-m_avbay = struct.m_avbay
-l_rebay = struct.l_rebay
-m_rebay = struct.m_rebay
-drag_coeff_para_reefed = struct.drag_coeff_para_reefed
+mode_CoM                 = struct.mode_CoM
+mode_Inertia             = struct.mode_Inertia
+l_center_of_mass         = struct.l_center_of_mass
+m_dry_measured           = struct.m_dry_measured
+r_rocket                 = struct.r_rocket
+top_r_bt                 = struct.top_r_bt
+bottom_r_bt              = struct.bottom_r_bt
+l_bt                     = struct.l_bt
+m_bt                     = struct.m_bt
+r_nozzle                 = struct.r_nozzle
+l_ebay                   = struct.l_ebay
+m_ebay                   = struct.m_ebay
+pos_lox                  = struct.pos_lox
+l_lox                    = struct.l_lox
+m_lox                    = struct.m_lox
+pos_aerocover            = struct.pos_aerocover
+m_aerocover              = struct.m_aerocover
+l_aerocover              = struct.l_aerocover
+r_aerocover              = struct.r_aerocover
+pos_copv_mbay            = struct.pos_copv_mbay
+l_pbay1                  = struct.l_pbay1
+m_pbay1                  = struct.m_pbay1
+pos_eth                  = struct.pos_eth
+l_eth                    = struct.l_eth
+m_eth                    = struct.m_eth
+pos_copv_pbay            = struct.pos_copv_pbay
+l_pbay2                  = struct.l_pbay2
+m_pbay2                  = struct.m_pbay2
+l_avbay                  = struct.l_avbay
+m_avbay                  = struct.m_avbay
+l_rebay                  = struct.l_rebay
+m_rebay                  = struct.m_rebay
+drag_coeff_para_reefed   = struct.drag_coeff_para_reefed
 drag_coeff_para_unreefed = struct.drag_coeff_para_unreefed
-trig_alt_para = struct.trig_alt_para
-l_nosecone = struct.l_nosecone
-m_nosecone = struct.m_nosecone
-r_int = struct.r_int
-tank_spherical_caps = struct.tank_spherical_caps
-tank_volume = struct.tank_volume
-r_int_copv = struct.r_int_copv
-copv_spherical_caps = struct.copv_spherical_caps
-copv_volume = struct.copv_volume
-n_fins = struct.n_fins
-env_fins = struct.env_fins
-rc_fins = struct.rc_fins
-tc_fins = struct.tc_fins
-pos_fins = struct.pos_fins
-cangle_fins = struct.cangle_fins
-sweep_l_fins = struct.sweep_l_fins
-m_fins = struct.m_fins
-pos_sup_rb = struct.pos_sup_rb
-pos_inf_rb = struct.pos_inf_rb
+trig_alt_para            = struct.trig_alt_para
+l_nosecone               = struct.l_nosecone
+m_nosecone               = struct.m_nosecone
+r_int                    = struct.r_int
+tank_spherical_caps      = struct.tank_spherical_caps
+tank_volume              = struct.tank_volume
+r_int_copv               = struct.r_int_copv
+copv_spherical_caps      = struct.copv_spherical_caps
+copv_volume              = struct.copv_volume
+n_fins                   = struct.n_fins
+env_fins                 = struct.env_fins
+rc_fins                  = struct.rc_fins
+tc_fins                  = struct.tc_fins
+pos_fins                 = struct.pos_fins
+cangle_fins              = struct.cangle_fins
+sweep_l_fins             = struct.sweep_l_fins
+m_fins                   = struct.m_fins
+pos_sup_rb               = struct.pos_sup_rb
+pos_inf_rb               = struct.pos_inf_rb
 
 # Propellant
-of_ratio = prop.of_ratio
-isp = prop.isp
-thrust = prop.thrust
-total_impulse = prop.total_impulse
-thrust_curve_mode = prop.thrust_curve_mode
-derated_thrust_in = prop.derated_thrust  # 0 = non spécifié -> défaut 85% du pic
-lox_boil_off_mass_flow_rate = prop.lox_boil_off
-lox_prechill_mass_flow_rate = prop.lox_prechill
-lox_ignition_mass_flow_rate = prop.lox_ignition
-lox_ramp_up_mass_flow_rate = prop.lox_ramp_up
-lox_ramp_down_mass_flow_rate = prop.lox_ramp_down
-lox_cutoff_mass_flow_rate = prop.lox_cutoff
-eth_ignition_mass_flow_rate = prop.eth_ignition
-eth_ramp_up_mass_flow_rate = prop.eth_ramp_up
-eth_ramp_down_mass_flow_rate = prop.eth_ramp_down
-eth_cutoff_mass_flow_rate = prop.eth_cutoff
-eth_frac_cooling = prop.eth_frac_cooling
-m_eth_unused = prop.m_eth_unused
-m_eth_density = prop.m_eth_density
-m_lox_unused = prop.m_lox_unused
-m_lox_density = prop.m_lox_density
-m_n2 = prop.m_n2
-hold_time = prop.hold_time
-prechill_time = prop.prechill_time
-ignition_delay = prop.ignition_delay
-ramp_up_time = prop.ramp_up_time
-cutoff_time = prop.cutoff_time
-ramp_down_time = prop.ramp_down_time
-f_shutdown = prop.f_shutdown
-f_hold_down = prop.f_hold_down
+of_ratio                          = prop.of_ratio
+isp                               = prop.isp
+thrust                            = prop.thrust
+total_impulse                     = prop.total_impulse
+thrust_curve_mode                 = prop.thrust_curve_mode
+derated_thrust_in                 = prop.derated_thrust  # 0 = non spécifié -> défaut 85% du pic
+lox_boil_off_mass_flow_rate       = prop.lox_boil_off
+lox_prechill_mass_flow_rate       = prop.lox_prechill
+lox_ignition_mass_flow_rate       = prop.lox_ignition
+lox_ramp_up_mass_flow_rate        = prop.lox_ramp_up
+lox_ramp_down_mass_flow_rate      = prop.lox_ramp_down
+lox_cutoff_mass_flow_rate         = prop.lox_cutoff
+eth_ignition_mass_flow_rate       = prop.eth_ignition
+eth_ramp_up_mass_flow_rate        = prop.eth_ramp_up
+eth_ramp_down_mass_flow_rate      = prop.eth_ramp_down
+eth_cutoff_mass_flow_rate         = prop.eth_cutoff
+eth_frac_cooling                  = prop.eth_frac_cooling
+m_eth_unused                      = prop.m_eth_unused
+m_eth_density                     = prop.m_eth_density
+m_lox_unused                      = prop.m_lox_unused
+m_lox_density                     = prop.m_lox_density
+m_n2                              = prop.m_n2
+hold_time                         = prop.hold_time
+prechill_time                     = prop.prechill_time
+ignition_delay                    = prop.ignition_delay
+ramp_up_time                      = prop.ramp_up_time
+cutoff_time                       = prop.cutoff_time
+ramp_down_time                    = prop.ramp_down_time
+f_shutdown                        = prop.f_shutdown
+f_hold_down                       = prop.f_hold_down
 
 # Parameters
-version = params.version.strip()
-save_files = params.save_files
-n_points = params.n_points
-write_to_file = params.write_to_file
-output_general = params.output_general
-output_euler_angles = params.output_euler_angles
-output_stability = params.output_stability
-output_trajectory = params.output_trajectory
-output_velocity = params.output_velocity
-output_acceleration = params.output_acceleration
-output_thrust_curve = params.output_thrust_curve
-annee = params.annee
-mois = params.mois
-jour = params.jour
-heure = params.heure
-minute = params.minute
-latitude = params.latitude
-longitude = params.longitude
-elevation = params.elevation
-alpha_rail = params.alpha_rail
-beta_rail = params.beta_rail
-l_rail = params.l_rail
-coeff_fr_rail = params.coeff_fr_rail
-inclination_rail = params.inclination_rail
-heading_rail = params.heading_rail
+version           = params.version.strip()
+save_files        = params.save_files
+n_points          = params.n_points
+write_to_file     = params.write_to_file
+output_general      = params.output_general
+output_euler_angles   = params.output_euler_angles
+output_stability      = params.output_stability
+output_trajectory     = params.output_trajectory
+output_velocity       = params.output_velocity
+output_acceleration   = params.output_acceleration
+output_thrust_curve   = params.output_thrust_curve
+annee             = params.annee
+mois              = params.mois
+jour              = params.jour
+heure             = params.heure
+minute            = params.minute
+latitude          = params.latitude
+longitude         = params.longitude
+elevation         = params.elevation
+alpha_rail        = params.alpha_rail
+beta_rail         = params.beta_rail
+l_rail            = params.l_rail
+coeff_fr_rail     = params.coeff_fr_rail
+inclination_rail  = params.inclination_rail
+heading_rail      = params.heading_rail
 g = 9.80665
 
 # ============================================================
 # Rocket
 # ============================================================
-Boattail = Bay("Boattail", 0, 0, r_rocket, l_bt, m_bt, "cylindrical")
-EngineBay = Bay(
-    "EngineBay", Boattail.length, 0, r_rocket, l_ebay, m_ebay + m_fins, "tank"
-)
-LOx = Bay("LOx", EngineBay.z + EngineBay.length, 0, r_rocket, l_lox, m_lox, "tank")
-Aerocover = Bay(
-    "Aerocover",
-    pos_aerocover,
-    r_rocket,
-    r_aerocover,
-    l_aerocover,
-    m_aerocover,
-    "semi-cylindrical",
-)
-PressurantBay1 = Bay(
-    "PressurantBay1", LOx.z + LOx.length, 0, r_rocket, l_pbay1, m_pbay1, "cylindrical"
-)
-ETH = Bay(
-    "ETH", PressurantBay1.z + PressurantBay1.length, 0, r_rocket, l_eth, m_eth, "tank"
-)
-PressurantBay2 = Bay(
-    "PressurantBay2", ETH.z + ETH.length, 0, r_rocket, l_pbay2, m_pbay2, "cylindrical"
-)
-AVBay = Bay(
-    "AVBay",
-    PressurantBay2.z + PressurantBay2.length,
-    0,
-    r_rocket,
-    l_avbay,
-    m_avbay,
-    "cylindrical",
-)
-RecoveryBay = Bay(
-    "RecoveryBay", AVBay.z + AVBay.length, 0, r_rocket, l_rebay, m_rebay, "cylindrical"
-)
-Nosecone = Bay(
-    "Nosecone",
-    RecoveryBay.z + RecoveryBay.length,
-    0,
-    r_rocket,
-    l_nosecone,
-    m_nosecone,
-    "conical",
-)
+Boattail        = Bay("Boattail",          0,                                             0,         r_rocket,    l_bt,          m_bt,              "cylindrical")
+EngineBay       = Bay("EngineBay",         Boattail.length,                               0,         r_rocket,    l_ebay,        m_ebay+m_fins,            "tank")
+LOx             = Bay("LOx",               EngineBay.z + EngineBay.length,                0,         r_rocket,    l_lox,         m_lox,             "tank")
+Aerocover       = Bay("Aerocover",         pos_aerocover,                                 r_rocket,  r_aerocover, l_aerocover,   m_aerocover,       "semi-cylindrical")
+PressurantBay1  = Bay("PressurantBay1",    LOx.z + LOx.length,                            0,         r_rocket,    l_pbay1,       m_pbay1,           "cylindrical")
+ETH             = Bay("ETH",               PressurantBay1.z + PressurantBay1.length,      0,         r_rocket,    l_eth,         m_eth,             "tank")
+PressurantBay2  = Bay("PressurantBay2",    ETH.z + ETH.length,                            0,         r_rocket,    l_pbay2,       m_pbay2,           "cylindrical")
+AVBay           = Bay("AVBay",             PressurantBay2.z + PressurantBay2.length,      0,         r_rocket,    l_avbay,       m_avbay,           "cylindrical")
+RecoveryBay     = Bay("RecoveryBay",       AVBay.z + AVBay.length,                        0,         r_rocket,    l_rebay,       m_rebay,           "cylindrical")
+Nosecone        = Bay("Nosecone",          RecoveryBay.z + RecoveryBay.length,            0,         r_rocket,    l_nosecone,    m_nosecone,        "conical")
 
-rocket = [
-    Boattail,
-    EngineBay,
-    LOx,
-    Aerocover,
-    PressurantBay1,
-    ETH,
-    PressurantBay2,
-    AVBay,
-    RecoveryBay,
-    Nosecone,
-]
+rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1, ETH, PressurantBay2, AVBay, RecoveryBay, Nosecone]
 
 
 # ============================================================
-# Center of Mass and Moment of Inertia
+# CoM et moment d'inertie
 # ============================================================
-if mode not in (0, 1):
-    raise ValueError("Mode has to be 0 or 1." "Setting dry mass and inertia to 0.")
+if mode_CoM == 0:
+    m_dry = sum(bay.mass for bay in rocket)
 
+    z_cm = 0
+    y_cm = 0
 
-# Calculates the total dry mass, the y_cm, z_cm with inputs m_dry, y_cm and z_cm
-def calculate_dry_mass_yz_cm(
-    m_dry: float, y_cm: float, z_cm: float
-) -> tuple[float, float, float]:
     for bay in rocket:
-        m_dry += bay.mass
-
         z_local, y_local = bay.center_masse()
-        y_cm += bay.mass * (bay.y + y_local)
         z_cm += bay.mass * (bay.z + z_local)
+        y_cm += bay.mass * (bay.y + y_local)
 
-    return (m_dry, (y_cm / m_dry), (z_cm / m_dry))
+    z_cm /= m_dry
+    y_cm /= m_dry
 
 
-if mode == 0:
-    m_dry, y_cm, z_cm = calculate_dry_mass_yz_cm(0, 0, 0)
+elif mode_CoM == 1:
+    m_dry = m_dry_measured + sum(bay.mass for bay in rocket)
+    
+    z_cm = l_center_of_mass * m_dry_measured
+    y_cm = 0
+
+    for bay in rocket:
+        z_local, y_local = bay.center_masse()
+        # print(bay.nom, bay.mass)
+        z_cm += bay.mass * (bay.z + z_local)
+        y_cm += bay.mass * (bay.y + y_local)
+
+    z_cm /= m_dry
+    y_cm /= m_dry
+
+else:
+    m_dry = 0
+    raise ValueError(
+        "Mode of CoM has to be 0 or 1."
+        "Setting dry mass to 0."
+    )
+
+
+if mode_Inertia == 0:
+
     Ix = 0
     Iy = 0
     Iz = 0
@@ -292,15 +257,42 @@ if mode == 0:
         Iy += Iy_local + bay.mass * (dx**2 + dz**2)
         Iz += Iz_local + bay.mass * (dx**2 + dy**2)
 
-else:  # if mode == 1
-    m_dry, y_cm, z_cm = calculate_dry_mass_yz_cm(
-        m_dry_measured, 0, l_center_of_mass * m_dry_measured
-    )
+    # si mode_CoM == 1, il faut ajouter l'effet de la m_dry_measured
+    if mode_CoM == 1:
+        L_rocket = Nosecone.z + Nosecone.length
+
+        # Inertie propre : approximation cylindre homogène
+        Ix_meas = m_dry_measured * (3 * r_rocket**2 + L_rocket**2) / 12
+        Iy_meas = Ix_meas
+        Iz_meas = 0.5 * m_dry_measured * r_rocket**2
+
+        # Huygens
+        dz = l_center_of_mass - z_cm
+        dy = 0.0 - y_cm
+        dx = 0.0
+
+        Ix += Ix_meas + m_dry_measured * (dy**2 + dz**2)
+        Iy += Iy_meas + m_dry_measured * (dx**2 + dz**2)
+        Iz += Iz_meas + m_dry_measured * (dx**2 + dy**2)
+
+elif mode_Inertia == 1:
 
     # Hardcoded the model (EuRoC_1)
     Ix = 242.7543433720102
     Iy = 242.71214558814867
     Iz = 0.9012818783579469
+
+else:
+    Ix = 0
+    Iy = 0
+    Iz = 0
+    raise ValueError(
+        "Mode of inertia has to be 0 or 1."
+        "Setting Inertia to 0."
+    )
+
+
+#print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
 
 # ============================================================
 # Propulsion reference quantities
@@ -324,8 +316,14 @@ if of_ratio <= 0:
 if F_shutdown < 0:
     raise ValueError("f_shutdown cannot be negative.")
 
-if ramp_up_time < 0 or ramp_down_time < 0 or cutoff_time < 0:
-    raise ValueError("Engine phase durations must be non-negative.")
+if (
+    ramp_up_time < 0
+    or ramp_down_time < 0
+    or cutoff_time < 0
+):
+    raise ValueError(
+        "Engine phase durations must be non-negative."
+    )
 
 
 # ------------------------------------------------------------
@@ -333,22 +331,40 @@ if ramp_up_time < 0 or ramp_down_time < 0 or cutoff_time < 0:
 # ------------------------------------------------------------
 
 # This flow corresponds to the quoted CORE Isp.
-engine_mass_flow_rate = F_full_thrust / (isp * g)
+engine_mass_flow_rate = (
+    F_full_thrust
+    / (isp * g)
+)
 
 # Main-injector fuel flow
-eth_mass_flow_rate = engine_mass_flow_rate / (1.0 + of_ratio)
+eth_mass_flow_rate = (
+    engine_mass_flow_rate
+    / (1.0 + of_ratio)
+)
 
 # Main-injector LOX flow
-lox_burn_mass_flow_rate = engine_mass_flow_rate - eth_mass_flow_rate
+lox_burn_mass_flow_rate = (
+    engine_mass_flow_rate
+    - eth_mass_flow_rate
+)
 
 # Film cooling is additional ethanol and is not contained in
 # the core Isp.
-film_cooling_mass_flow_rate = eth_mass_flow_rate * eth_frac_cooling
+film_cooling_mass_flow_rate = (
+    eth_mass_flow_rate
+    * eth_frac_cooling
+)
 
-eth_burn_mass_flow_rate = eth_mass_flow_rate + film_cooling_mass_flow_rate
+eth_burn_mass_flow_rate = (
+    eth_mass_flow_rate
+    + film_cooling_mass_flow_rate
+)
 
 # Equivalent rectangle thrust curve burn time
-equivalent_burn_time = total_impulse / F_full_thrust
+equivalent_burn_time = (
+    total_impulse
+    / F_full_thrust
+)
 
 
 # ============================================================
@@ -359,7 +375,11 @@ equivalent_burn_time = total_impulse / F_full_thrust
 #
 #        0 N -> F_full_thrust
 #
-impulse_ramp_up = 0.5 * F_full_thrust * ramp_up_time
+impulse_ramp_up = (
+    0.5
+    * F_full_thrust
+    * ramp_up_time
+)
 
 # Cutoff is modeled as:
 #
@@ -367,7 +387,11 @@ impulse_ramp_up = 0.5 * F_full_thrust * ramp_up_time
 #
 # If F_shutdown = 0, this phase contributes zero impulse even
 # though propellant may still be expelled.
-impulse_cutoff = 0.5 * F_shutdown * cutoff_time
+impulse_cutoff = (
+    0.5
+    * F_shutdown
+    * cutoff_time
+)
 
 t_rampup_end = ramp_up_time
 
@@ -383,18 +407,26 @@ if thrust_curve_mode == "constant":
 
     if F_shutdown > F_ramp_down:
         raise ValueError(
-            "f_shutdown cannot exceed thrust at the start " "of ramp-down."
+            "f_shutdown cannot exceed thrust at the start "
+            "of ramp-down."
         )
 
     # Linear ramp-down:
     #
     # F_full_thrust -> F_shutdown
     #
-    impulse_ramp_down = 0.5 * (F_ramp_down + F_shutdown) * ramp_down_time
+    impulse_ramp_down = (
+        0.5
+        * (F_ramp_down + F_shutdown)
+        * ramp_down_time
+    )
 
     # Solve the flat duration needed to reach total_impulse.
     flat_duration = (
-        total_impulse - impulse_ramp_up - impulse_ramp_down - impulse_cutoff
+        total_impulse
+        - impulse_ramp_up
+        - impulse_ramp_down
+        - impulse_cutoff
     ) / F_full_thrust
 
     if flat_duration < 0:
@@ -406,18 +438,30 @@ if thrust_curve_mode == "constant":
 
     t_full_thrust = t_rampup_end
 
-    t_ramp_down = t_full_thrust + flat_duration
+    t_ramp_down = (
+        t_full_thrust
+        + flat_duration
+    )
 
-    t_shutdown = t_ramp_down + ramp_down_time
+    t_shutdown = (
+        t_ramp_down
+        + ramp_down_time
+    )
 
-    t_cutoff_end = t_shutdown + cutoff_time
+    t_cutoff_end = (
+        t_shutdown
+        + cutoff_time
+    )
 
     # Physical elapsed duration of the main-combustion phase.
     main_phase_duration = flat_duration
 
     # Main-phase impulse only:
     # excludes ramp-up, ramp-down and cutoff.
-    main_impulse_total = F_full_thrust * flat_duration
+    main_impulse_total = (
+        F_full_thrust
+        * flat_duration
+    )
 
     def main_impulse_elapsed(t):
         """
@@ -436,7 +480,10 @@ if thrust_curve_mode == "constant":
             flat_duration,
         )
 
-        return F_full_thrust * dt_main
+        return (
+            F_full_thrust
+            * dt_main
+        )
 
     def evaluate_thrust(t):
         """
@@ -454,36 +501,72 @@ if thrust_curve_mode == "constant":
         # Ramp-up
         if ramp_up_time > 0:
 
-            mask = (t >= 0.0) & (t <= t_rampup_end)
+            mask = (
+                (t >= 0.0)
+                & (t <= t_rampup_end)
+            )
 
-            F_out[mask] = F_full_thrust * t[mask] / ramp_up_time
+            F_out[mask] = (
+                F_full_thrust
+                * t[mask]
+                / ramp_up_time
+            )
 
         else:
 
-            F_out[t >= 0.0] = F_full_thrust
+            F_out[t >= 0.0] = (
+                F_full_thrust
+            )
 
         # Constant main burn
-        mask = (t > t_rampup_end) & (t <= t_ramp_down)
+        mask = (
+            (t > t_rampup_end)
+            & (t <= t_ramp_down)
+        )
 
-        F_out[mask] = F_full_thrust
+        F_out[mask] = (
+            F_full_thrust
+        )
 
         # Ramp-down
         if ramp_down_time > 0:
 
-            mask = (t > t_ramp_down) & (t <= t_shutdown)
+            mask = (
+                (t > t_ramp_down)
+                & (t <= t_shutdown)
+            )
 
-            u = (t[mask] - t_ramp_down) / ramp_down_time
+            u = (
+                (t[mask] - t_ramp_down)
+                / ramp_down_time
+            )
 
-            F_out[mask] = F_ramp_down + (F_shutdown - F_ramp_down) * u
+            F_out[mask] = (
+                F_ramp_down
+                + (
+                    F_shutdown
+                    - F_ramp_down
+                )
+                * u
+            )
 
         # Cutoff
         if cutoff_time > 0:
 
-            mask = (t > t_shutdown) & (t <= t_cutoff_end)
+            mask = (
+                (t > t_shutdown)
+                & (t <= t_cutoff_end)
+            )
 
-            u = (t[mask] - t_shutdown) / cutoff_time
+            u = (
+                (t[mask] - t_shutdown)
+                / cutoff_time
+            )
 
-            F_out[mask] = F_shutdown * (1.0 - u)
+            F_out[mask] = (
+                F_shutdown
+                * (1.0 - u)
+            )
 
         return np.maximum(
             F_out,
@@ -499,24 +582,58 @@ elif thrust_curve_mode == "peaked":
 
     peak_duration_factor = 1.5
 
-    F_derating = derated_thrust_in if derated_thrust_in > 0 else 0.85 * F_full_thrust
+    F_derating = (
+        derated_thrust_in
+        if derated_thrust_in > 0
+        else 0.85 * F_full_thrust
+    )
 
-    if F_derating <= 0 or F_derating > F_full_thrust:
-        raise ValueError("derated thrust must be > 0 and <= nominal thrust.")
+    if (
+        F_derating <= 0
+        or F_derating > F_full_thrust
+    ):
+        raise ValueError(
+            "derated thrust must be > 0 and <= nominal thrust."
+        )
 
     if F_shutdown > F_derating:
         raise ValueError(
-            "f_shutdown cannot exceed the derated thrust " "at the start of ramp-down."
+            "f_shutdown cannot exceed the derated thrust "
+            "at the start of ramp-down."
         )
 
+
     # Duration of full-thrust -> derated transition
-    t_peak_transition = (peak_duration_factor - 1.0) * ramp_up_time
+    t_peak_transition = (
+        (peak_duration_factor - 1.0)
+        * ramp_up_time
+    )
 
-    t_derate_end = t_rampup_end + t_peak_transition
+    t_derate_end = (
+        t_rampup_end
+        + t_peak_transition
+    )
 
-    impulse_transition = 0.5 * (F_full_thrust + F_derating) * t_peak_transition
 
-    impulse_ramp_down = 0.5 * (F_derating + F_shutdown) * ramp_down_time
+    impulse_transition = (
+        0.5
+        * (
+            F_full_thrust
+            + F_derating
+        )
+        * t_peak_transition
+    )
+
+
+    impulse_ramp_down = (
+        0.5
+        * (
+            F_derating
+            + F_shutdown
+        )
+        * ramp_down_time
+    )
+
 
     # Solve actual derated plateau duration.
     t_const = (
@@ -533,17 +650,38 @@ elif thrust_curve_mode == "peaked":
             "peak, derating, ramp-down and cutoff phases."
         )
 
-    t_full_thrust = t_rampup_end
 
-    t_ramp_down = t_derate_end + t_const
+    t_full_thrust = (
+        t_rampup_end
+    )
 
-    t_shutdown = t_ramp_down + ramp_down_time
+    t_ramp_down = (
+        t_derate_end
+        + t_const
+    )
 
-    t_cutoff_end = t_shutdown + cutoff_time
+    t_shutdown = (
+        t_ramp_down
+        + ramp_down_time
+    )
 
-    main_phase_duration = t_peak_transition + t_const
+    t_cutoff_end = (
+        t_shutdown
+        + cutoff_time
+    )
 
-    main_impulse_total = impulse_transition + F_derating * t_const
+
+    main_phase_duration = (
+        t_peak_transition
+        + t_const
+    )
+
+
+    main_impulse_total = (
+        impulse_transition
+        + F_derating * t_const
+    )
+
 
     def main_impulse_elapsed(t):
         """
@@ -564,6 +702,7 @@ elif thrust_curve_mode == "peaked":
             main_phase_duration,
         )
 
+
         if t_peak_transition > 0:
 
             u_transition = np.minimum(
@@ -573,20 +712,36 @@ elif thrust_curve_mode == "peaked":
 
             # Integral of the linearly derating thrust.
             I_transition_partial = (
-                F_full_thrust * u_transition
+                F_full_thrust
+                * u_transition
                 + 0.5
-                * (F_derating - F_full_thrust)
+                * (
+                    F_derating
+                    - F_full_thrust
+                )
                 / t_peak_transition
                 * u_transition**2
             )
 
             return np.where(
                 u <= t_peak_transition,
+
                 I_transition_partial,
-                impulse_transition + F_derating * (u - t_peak_transition),
+
+                impulse_transition
+                + F_derating
+                * (
+                    u
+                    - t_peak_transition
+                ),
             )
 
-        return F_derating * u
+
+        return (
+            F_derating
+            * u
+        )
+
 
     def evaluate_thrust(t):
         """
@@ -600,48 +755,103 @@ elif thrust_curve_mode == "peaked":
 
         F_out = np.zeros_like(t)
 
+
         # Ramp-up
         if ramp_up_time > 0:
 
-            mask = (t >= 0.0) & (t <= t_rampup_end)
+            mask = (
+                (t >= 0.0)
+                & (t <= t_rampup_end)
+            )
 
-            F_out[mask] = F_full_thrust * t[mask] / ramp_up_time
+            F_out[mask] = (
+                F_full_thrust
+                * t[mask]
+                / ramp_up_time
+            )
 
         else:
 
-            F_out[t >= 0.0] = F_full_thrust
+            F_out[t >= 0.0] = (
+                F_full_thrust
+            )
+
 
         # Peak -> derated transition
         if t_peak_transition > 0:
 
-            mask = (t > t_rampup_end) & (t <= t_derate_end)
+            mask = (
+                (t > t_rampup_end)
+                & (t <= t_derate_end)
+            )
 
-            u = (t[mask] - t_rampup_end) / t_peak_transition
+            u = (
+                (t[mask] - t_rampup_end)
+                / t_peak_transition
+            )
 
-            F_out[mask] = F_full_thrust + (F_derating - F_full_thrust) * u
+            F_out[mask] = (
+                F_full_thrust
+                + (
+                    F_derating
+                    - F_full_thrust
+                )
+                * u
+            )
+
 
         # Derated plateau
-        mask = (t > t_derate_end) & (t <= t_ramp_down)
+        mask = (
+            (t > t_derate_end)
+            & (t <= t_ramp_down)
+        )
 
-        F_out[mask] = F_derating
+        F_out[mask] = (
+            F_derating
+        )
+
 
         # Ramp-down
         if ramp_down_time > 0:
 
-            mask = (t > t_ramp_down) & (t <= t_shutdown)
+            mask = (
+                (t > t_ramp_down)
+                & (t <= t_shutdown)
+            )
 
-            u = (t[mask] - t_ramp_down) / ramp_down_time
+            u = (
+                (t[mask] - t_ramp_down)
+                / ramp_down_time
+            )
 
-            F_out[mask] = F_derating + (F_shutdown - F_derating) * u
+            F_out[mask] = (
+                F_derating
+                + (
+                    F_shutdown
+                    - F_derating
+                )
+                * u
+            )
+
 
         # Cutoff
         if cutoff_time > 0:
 
-            mask = (t > t_shutdown) & (t <= t_cutoff_end)
+            mask = (
+                (t > t_shutdown)
+                & (t <= t_cutoff_end)
+            )
 
-            u = (t[mask] - t_shutdown) / cutoff_time
+            u = (
+                (t[mask] - t_shutdown)
+                / cutoff_time
+            )
 
-            F_out[mask] = F_shutdown * (1.0 - u)
+            F_out[mask] = (
+                F_shutdown
+                * (1.0 - u)
+            )
+
 
         return np.maximum(
             F_out,
@@ -661,7 +871,9 @@ else:
 # ============================================================
 
 if int(n_points) < 2:
-    raise ValueError("n_points must be >= 2.")
+    raise ValueError(
+        "n_points must be >= 2."
+    )
 
 t_base = np.linspace(
     0.0,
@@ -714,17 +926,33 @@ if not np.isclose(
         f"{total_impulse:.2f} N.s"
     )
 
-print("\n========== THRUST CURVE ==========")
+print(
+    "\n========== THRUST CURVE =========="
+)
 
-print(f"Mode: {thrust_curve_mode}")
+print(
+    f"Mode: {thrust_curve_mode}"
+)
 
-print(f"Equivalent rectangular burn time : " f"{equivalent_burn_time:.4f} s")
+print(
+    f"Equivalent rectangular burn time : "
+    f"{equivalent_burn_time:.4f} s"
+)
 
-print(f"Main physical phase duration      : " f"{main_phase_duration:.4f} s")
+print(
+    f"Main physical phase duration      : "
+    f"{main_phase_duration:.4f} s"
+)
 
-print(f"End of thrust ramp-down           : " f"{t_shutdown:.4f} s")
+print(
+    f"End of thrust ramp-down           : "
+    f"{t_shutdown:.4f} s"
+)
 
-print(f"End of cutoff / propellant flow   : " f"{t_cutoff_end:.4f} s")
+print(
+    f"End of cutoff / propellant flow   : "
+    f"{t_cutoff_end:.4f} s"
+)
 
 print(
     f"Integrated impulse                : "
@@ -732,7 +960,9 @@ print(
     f"(target {total_impulse:.2f} N.s)"
 )
 
-print("==================================\n")
+print(
+    "==================================\n"
+)
 
 # This is the main combustion phase (no longer the full burn duration)
 # burn_time = (
@@ -750,21 +980,39 @@ print("==================================\n")
 # ------------------------------------------------------------
 
 # TODO: use sign of ignition_delay to determine 0 flow rate for either lox or eth
-m_fuel_ignition = eth_ignition_mass_flow_rate * abs(ignition_delay)
+m_fuel_ignition = (
+    eth_ignition_mass_flow_rate
+    * abs(ignition_delay)
+)
 
-m_ox_boil_off = lox_boil_off_mass_flow_rate * hold_time
+m_ox_boil_off = (
+    lox_boil_off_mass_flow_rate
+    * hold_time
+)
 
-m_ox_prechill = lox_prechill_mass_flow_rate * prechill_time
+m_ox_prechill = (
+    lox_prechill_mass_flow_rate
+    * prechill_time
+)
 
-m_ox_ignition = lox_ignition_mass_flow_rate * abs(ignition_delay)
+m_ox_ignition = (
+    lox_ignition_mass_flow_rate
+    * abs(ignition_delay)
+)
 
 # ------------------------------------------------------------
 # POST-t=0 expendable propellant
 # ------------------------------------------------------------
 
-m_fuel_rampup = eth_ramp_up_mass_flow_rate * ramp_up_time
+m_fuel_rampup = (
+    eth_ramp_up_mass_flow_rate
+    * ramp_up_time
+)
 
-m_ox_rampup = lox_ramp_up_mass_flow_rate * ramp_up_time
+m_ox_rampup = (
+    lox_ramp_up_mass_flow_rate
+    * ramp_up_time
+)
 
 # Main combustion propellant.
 #
@@ -772,38 +1020,83 @@ m_ox_rampup = lox_ramp_up_mass_flow_rate * ramp_up_time
 # to the actual main-phase impulse.
 #
 # This automatically handles the derated region in peaked mode.
-m_fuel_burn = eth_burn_mass_flow_rate * main_impulse_total / F_full_thrust
+m_fuel_burn = (
+    eth_burn_mass_flow_rate
+    * main_impulse_total
+    / F_full_thrust
+)
 
-m_ox_burn = lox_burn_mass_flow_rate * main_impulse_total / F_full_thrust
+m_ox_burn = (
+    lox_burn_mass_flow_rate
+    * main_impulse_total
+    / F_full_thrust
+)
 
-m_fuel_rampdown = eth_ramp_down_mass_flow_rate * ramp_down_time
+m_fuel_rampdown = (
+    eth_ramp_down_mass_flow_rate
+    * ramp_down_time
+)
 
-m_ox_rampdown = lox_ramp_down_mass_flow_rate * ramp_down_time
+m_ox_rampdown = (
+    lox_ramp_down_mass_flow_rate
+    * ramp_down_time
+)
 
 # TODO: use sign of cutoff_time to determine 0 flow rate for either lox or eth
-m_fuel_cutoff = eth_cutoff_mass_flow_rate * cutoff_time
+m_fuel_cutoff = (
+    eth_cutoff_mass_flow_rate
+    * cutoff_time
+)
 
-m_ox_cutoff = lox_cutoff_mass_flow_rate * cutoff_time
+m_ox_cutoff = (
+    lox_cutoff_mass_flow_rate
+    * cutoff_time
+)
 
 m_fuel_unused = m_eth_unused
 
 m_ox_unused = m_lox_unused
 
 # All liquid that leaves after t=0.
-free_fuel = m_fuel_rampup + m_fuel_burn + m_fuel_rampdown + m_fuel_cutoff
+free_fuel = (
+    m_fuel_rampup
+    + m_fuel_burn
+    + m_fuel_rampdown
+    + m_fuel_cutoff
+)
 
-free_ox = m_ox_rampup + m_ox_burn + m_ox_rampdown + m_ox_cutoff
+free_ox = (
+    m_ox_rampup
+    + m_ox_burn
+    + m_ox_rampdown
+    + m_ox_cutoff
+)
 
 # Total amount loaded before pre-start losses.
-m_fuel_total = m_fuel_ignition + free_fuel + m_fuel_unused
+m_fuel_total = (
+    m_fuel_ignition
+    + free_fuel
+    + m_fuel_unused
+)
 
-m_ox_total = m_ox_boil_off + m_ox_prechill + m_ox_ignition + free_ox + m_ox_unused
+m_ox_total = (
+    m_ox_boil_off
+    + m_ox_prechill
+    + m_ox_ignition
+    + free_ox
+    + m_ox_unused
+)
 
 # Two identical COPVs
 m_n2_copv = m_n2
 
 
-m_wet = m_dry + m_fuel_total + m_ox_total + 2.0 * m_n2_copv
+m_wet = (
+    m_dry
+    + m_fuel_total
+    + m_ox_total
+    + 2.0 * m_n2_copv
+)
 
 
 nominal_total_impulse = total_impulse
@@ -812,7 +1105,6 @@ nominal_total_impulse = total_impulse
 # ============================================================
 # Exact propellant depletion
 # ============================================================
-
 
 def compute_propellant_depletion(
     t,
@@ -861,17 +1153,31 @@ def compute_propellant_depletion(
     main_impulse = main_impulse_elapsed(t)
 
     consumed = (
-        rampup_mdot * dt_rampup
-        + (burn_mdot_full / F_full_thrust * main_impulse)
-        + rampdown_mdot * dt_rampdown
-        + cutoff_mdot * dt_cutoff
+        rampup_mdot
+        * dt_rampup
+        + (
+            burn_mdot_full
+            / F_full_thrust
+            * main_impulse
+        )
+        + rampdown_mdot
+        * dt_rampdown
+        + cutoff_mdot
+        * dt_cutoff
     )
 
     free_mass = (
-        rampup_mdot * ramp_up_time
-        + (burn_mdot_full / F_full_thrust * main_impulse_total)
-        + rampdown_mdot * ramp_down_time
-        + cutoff_mdot * cutoff_time
+        rampup_mdot
+        * ramp_up_time
+        + (
+            burn_mdot_full
+            / F_full_thrust
+            * main_impulse_total
+        )
+        + rampdown_mdot
+        * ramp_down_time
+        + cutoff_mdot
+        * cutoff_time
     )
 
     mrem = np.maximum(
@@ -880,7 +1186,6 @@ def compute_propellant_depletion(
     )
 
     return consumed, mrem, free_mass
-
 
 # Fuel
 (
@@ -923,7 +1228,10 @@ mdot_ox = np.zeros_like(t_total)
 
 
 # Ramp-up
-mask = (t_total >= 0.0) & (t_total < t_rampup_end)
+mask = (
+    (t_total >= 0.0)
+    & (t_total < t_rampup_end)
+)
 
 mdot_fuel[mask] = eth_ramp_up_mass_flow_rate
 
@@ -931,19 +1239,34 @@ mdot_ox[mask] = lox_ramp_up_mass_flow_rate
 
 
 # Main combustion
-mask = (t_total >= t_rampup_end) & (t_total < t_ramp_down)
+mask = (
+    (t_total >= t_rampup_end)
+    & (t_total < t_ramp_down)
+)
 
 mdot_scale = np.zeros_like(t_total)
 
-mdot_scale[mask] = F_eng[mask] / F_full_thrust
+mdot_scale[mask] = (
+    F_eng[mask]
+    / F_full_thrust
+)
 
-mdot_fuel[mask] = eth_burn_mass_flow_rate * mdot_scale[mask]
+mdot_fuel[mask] = (
+    eth_burn_mass_flow_rate
+    * mdot_scale[mask]
+)
 
-mdot_ox[mask] = lox_burn_mass_flow_rate * mdot_scale[mask]
+mdot_ox[mask] = (
+    lox_burn_mass_flow_rate
+    * mdot_scale[mask]
+)
 
 
 # Ramp-down
-mask = (t_total >= t_ramp_down) & (t_total < t_shutdown)
+mask = (
+    (t_total >= t_ramp_down)
+    & (t_total < t_shutdown)
+)
 
 mdot_fuel[mask] = eth_ramp_down_mass_flow_rate
 
@@ -951,7 +1274,10 @@ mdot_ox[mask] = lox_ramp_down_mass_flow_rate
 
 
 # Cutoff
-mask = (t_total >= t_shutdown) & (t_total <= t_cutoff_end)
+mask = (
+    (t_total >= t_shutdown)
+    & (t_total <= t_cutoff_end)
+)
 
 mdot_fuel[mask] = eth_cutoff_mass_flow_rate
 
@@ -959,46 +1285,89 @@ mdot_ox[mask] = lox_cutoff_mass_flow_rate
 
 
 # Remaining liquid volume
-Vrem_fuel = mrem_fuel / m_eth_density
+Vrem_fuel = (
+    mrem_fuel
+    / m_eth_density
+)
 
-Vrem_ox = mrem_ox / m_lox_density
+Vrem_ox = (
+    mrem_ox
+    / m_lox_density
+)
 
 
 # ============================================================
 # Tank quantities
 # ============================================================
 
-A_tank = np.pi * r_int**2
+A_tank = (
+    np.pi
+    * r_int**2
+)
 
-V_tank_total = tank_volume
-
-
-V_fuel_free = free_fuel / m_eth_density
-
-V_fuel_fixed = m_fuel_unused / m_eth_density
-
-
-V_ox_free = free_ox / m_lox_density
-
-V_ox_fixed = m_ox_unused / m_lox_density
+V_tank_total = (
+    tank_volume
+)
 
 
-h_fuel_free = V_fuel_free / A_tank
+V_fuel_free = (
+    free_fuel
+    / m_eth_density
+)
 
-h_ox_free = V_ox_free / A_tank
+V_fuel_fixed = (
+    m_fuel_unused
+    / m_eth_density
+)
+
+
+V_ox_free = (
+    free_ox
+    / m_lox_density
+)
+
+V_ox_fixed = (
+    m_ox_unused
+    / m_lox_density
+)
+
+
+h_fuel_free = (
+    V_fuel_free
+    / A_tank
+)
+
+h_ox_free = (
+    V_ox_free
+    / A_tank
+)
 
 
 # ============================================================
 # Vehicle mass from t = 0 onward
 # ============================================================
 
-mass_lost_fuel_before_t0 = m_fuel_ignition
+mass_lost_fuel_before_t0 = (
+    m_fuel_ignition
+)
 
-mass_lost_ox_before_t0 = m_ox_boil_off + m_ox_prechill + m_ox_ignition
+mass_lost_ox_before_t0 = (
+    m_ox_boil_off
+    + m_ox_prechill
+    + m_ox_ignition
+)
 
-m_wet_t0 = m_wet - mass_lost_fuel_before_t0 - mass_lost_ox_before_t0
+m_wet_t0 = (
+    m_wet
+    - mass_lost_fuel_before_t0
+    - mass_lost_ox_before_t0
+)
 
-m_vehicle = m_wet_t0 - consumed_fuel - consumed_ox
+m_vehicle = (
+    m_wet_t0
+    - consumed_fuel
+    - consumed_ox
+)
 
 
 # ============================================================
@@ -1011,24 +1380,43 @@ beta = np.deg2rad(beta_rail)
 
 t_array = t_total
 
-denominator = np.cos(beta) - coeff_fr_rail * np.sin(beta)
+denominator = (
+    np.cos(beta)
+    - coeff_fr_rail
+    * np.sin(beta)
+)
 
 
 if np.isclose(denominator, 0.0):
-    raise ValueError("Hold-down force denominator is approximately zero.")
+    raise ValueError(
+        "Hold-down force denominator is approximately zero."
+    )
 
 W = m_vehicle * g
 
-F_HD = (F_eng - W * (np.cos(alpha) - coeff_fr_rail * np.sin(alpha))) / denominator
+F_HD = (
+    F_eng
+    - W
+    * (
+        np.cos(alpha)
+        - coeff_fr_rail
+        * np.sin(alpha)
+    )
+) / denominator
 
-F_rrb = (F_eng * np.sin(beta) + W * np.sin(alpha - beta)) / denominator
+F_rrb = (
+    F_eng
+    * np.sin(beta)
+    + W
+    * np.sin(alpha - beta)
+) / denominator
 
 
 # ------------------------------------------------------------
 # Hold-down release
 # ------------------------------------------------------------
 
-# TODO: refine idx_break with interpolation
+# TODO: refine idx_break with interpolation 
 if f_hold_down > 0:
     mask_break = F_HD >= f_hold_down
 
@@ -1037,7 +1425,9 @@ if f_hold_down > 0:
         t_break = t_array[idx_break]
 
     else:
-        raise ValueError("Hold-down threshold not reached during propulsion.")
+        raise ValueError(
+            "Hold-down threshold not reached during propulsion."
+        )
 
 else:
     idx_break = 0
@@ -1048,10 +1438,16 @@ else:
 # Propellant lost before hold-down release
 # ============================================================
 
-mass_lost_fuel_before_break = mass_lost_fuel_before_t0 + consumed_fuel[idx_break]
+mass_lost_fuel_before_break = (
+    mass_lost_fuel_before_t0
+    + consumed_fuel[idx_break]
+)
 
 
-mass_lost_ox_before_break = mass_lost_ox_before_t0 + consumed_ox[idx_break]
+mass_lost_ox_before_break = (
+    mass_lost_ox_before_t0
+    + consumed_ox[idx_break]
+)
 
 
 # ============================================================
@@ -1114,7 +1510,9 @@ if not np.isclose(
     rtol=1e-10,
     atol=1e-10,
 ):
-    raise RuntimeError("Fuel depletion is inconsistent.")
+    raise RuntimeError(
+        "Fuel depletion is inconsistent."
+    )
 
 
 if not np.isclose(
@@ -1123,7 +1521,9 @@ if not np.isclose(
     rtol=1e-10,
     atol=1e-10,
 ):
-    raise RuntimeError("LOX depletion is inconsistent.")
+    raise RuntimeError(
+        "LOX depletion is inconsistent."
+    )
 
 
 if not np.isclose(
@@ -1132,7 +1532,9 @@ if not np.isclose(
     rtol=1e-10,
     atol=1e-10,
 ):
-    raise RuntimeError("Fuel is not fully depleted by end of cutoff.")
+    raise RuntimeError(
+        "Fuel is not fully depleted by end of cutoff."
+    )
 
 
 if not np.isclose(
@@ -1141,47 +1543,96 @@ if not np.isclose(
     rtol=1e-10,
     atol=1e-10,
 ):
-    raise RuntimeError("LOX is not fully depleted by end of cutoff.")
+    raise RuntimeError(
+        "LOX is not fully depleted by end of cutoff."
+    )
 
 
-print("\n========== PROPELLANT ==========")
+print(
+    "\n========== PROPELLANT =========="
+)
 
-print(f"Fuel total loaded       : " f"{m_fuel_total:.4f} kg")
+print(
+    f"Fuel total loaded       : "
+    f"{m_fuel_total:.4f} kg"
+)
 
-print(f"LOX total loaded        : " f"{m_ox_total:.4f} kg")
+print(
+    f"LOX total loaded        : "
+    f"{m_ox_total:.4f} kg"
+)
 
-print(f"Wet mass after filling  : " f"{m_wet:.4f} kg")
+print(
+    f"Wet mass after filling  : "
+    f"{m_wet:.4f} kg"
+)
 
-print(f"Vehicle mass at t=0     : " f"{m_wet_t0:.4f} kg")
+print(
+    f"Vehicle mass at t=0     : "
+    f"{m_wet_t0:.4f} kg"
+)
 
-print(f"Hold-down release       : " f"{t_break:.4f} s")
+print(
+    f"Hold-down release       : "
+    f"{t_break:.4f} s"
+)
 
-print(f"Vehicle mass at release : " f"{m_vehicle[idx_break]:.4f} kg")
+print(
+    f"Vehicle mass at release : "
+    f"{m_vehicle[idx_break]:.4f} kg"
+)
 
-print(f"Fuel lost before release: " f"{mass_lost_fuel_before_break:.4f} kg")
+print(
+    f"Fuel lost before release: "
+    f"{mass_lost_fuel_before_break:.4f} kg"
+)
 
-print(f"LOX lost before release : " f"{mass_lost_ox_before_break:.4f} kg")
+print(
+    f"LOX lost before release : "
+    f"{mass_lost_ox_before_break:.4f} kg"
+)
 
-print("================================\n")
+print(
+    "================================\n"
+)
+
 
 
 # ============================================================
 # Ullage
 # ============================================================
 
-raw_ullage_fuel_m3 = V_tank_total - V_fuel_fixed - Vrem_fuel
+raw_ullage_fuel_m3 = (
+    V_tank_total
+    - V_fuel_fixed
+    - Vrem_fuel
+)
 
-raw_ullage_lox_m3 = V_tank_total - V_ox_fixed - Vrem_ox
+raw_ullage_lox_m3 = (
+    V_tank_total
+    - V_ox_fixed
+    - Vrem_ox
+)
 
 
 tol_ullage = 1e-9
 
 
-if np.any(raw_ullage_fuel_m3 < -tol_ullage):
-    raise ValueError("Fuel tank is overfilled in the depletion model.")
+if np.any(
+    raw_ullage_fuel_m3
+    < -tol_ullage
+):
+    raise ValueError(
+        "Fuel tank is overfilled in the depletion model."
+    )
 
-if np.any(raw_ullage_lox_m3 < -tol_ullage):
-    raise ValueError("LOX tank is overfilled in the depletion model.")
+if np.any(
+    raw_ullage_lox_m3
+    < -tol_ullage
+):
+    raise ValueError(
+        "LOX tank is overfilled in the depletion model."
+    )
 
 
 ullage_fuel_m3 = np.maximum(
@@ -1195,7 +1646,6 @@ ullage_lox_m3 = np.maximum(
 )
 
 L_PER_M3 = 1000.0
-
 
 def ullage_from_liquid_volume(
     V_tank,
@@ -1220,7 +1670,11 @@ def ullage_from_liquid_volume(
 
     ullage_L = V_ullage * L_PER_M3
 
-    ullage_pct = 100.0 * V_ullage / V_tank
+    ullage_pct = (
+        100.0
+        * V_ullage
+        / V_tank
+    )
 
     return V_ullage, ullage_L, ullage_pct
 
@@ -1229,10 +1683,16 @@ def ullage_from_liquid_volume(
 # Immediately after filling
 # ------------------------------------------------------------
 
-V_fuel_filled = m_fuel_total / m_eth_density
+V_fuel_filled = (
+    m_fuel_total
+    / m_eth_density
+)
 
 
-V_lox_filled = m_ox_total / m_lox_density
+V_lox_filled = (
+    m_ox_total
+    / m_lox_density
+)
 
 
 (
@@ -1261,10 +1721,16 @@ V_lox_filled = m_ox_total / m_lox_density
 # t = 0: after pre-start losses, before ramp-up
 # ------------------------------------------------------------
 
-V_fuel_t0 = V_fuel_fixed + V_fuel_free
+V_fuel_t0 = (
+    V_fuel_fixed
+    + V_fuel_free
+)
 
 
-V_lox_t0 = V_ox_fixed + V_ox_free
+V_lox_t0 = (
+    V_ox_fixed
+    + V_ox_free
+)
 
 
 (
@@ -1293,10 +1759,16 @@ V_lox_t0 = V_ox_fixed + V_ox_free
 # Hold-down release
 # ------------------------------------------------------------
 
-V_fuel_release = V_fuel_fixed + Vrem_fuel[idx_break]
+V_fuel_release = (
+    V_fuel_fixed
+    + Vrem_fuel[idx_break]
+)
 
 
-V_lox_release = V_ox_fixed + Vrem_ox[idx_break]
+V_lox_release = (
+    V_ox_fixed
+    + Vrem_ox[idx_break]
+)
 
 
 (
@@ -1325,25 +1797,50 @@ print("\n================ ULLAGE =================")
 
 print("Immediately after filling:")
 
-print(f"  Fuel : " f"{ullage_fuel_fill_L:.2f} L " f"({ullage_fuel_fill_pct:.2f} %)")
+print(
+    f"  Fuel : "
+    f"{ullage_fuel_fill_L:.2f} L "
+    f"({ullage_fuel_fill_pct:.2f} %)"
+)
 
-print(f"  LOX  : " f"{ullage_lox_fill_L:.2f} L " f"({ullage_lox_fill_pct:.2f} %)")
+print(
+    f"  LOX  : "
+    f"{ullage_lox_fill_L:.2f} L "
+    f"({ullage_lox_fill_pct:.2f} %)"
+)
 
 
 print("\nAt t=0 (start of ramp-up):")
 
-print(f"  Fuel : " f"{ullage_fuel_t0_L:.2f} L " f"({ullage_fuel_t0_pct:.2f} %)")
-
-print(f"  LOX  : " f"{ullage_lox_t0_L:.2f} L " f"({ullage_lox_t0_pct:.2f} %)")
-
-
-print(f"\nAt hold-down release " f"(t={t_break:.3f} s):")
-
 print(
-    f"  Fuel : " f"{ullage_fuel_release_L:.2f} L " f"({ullage_fuel_release_pct:.2f} %)"
+    f"  Fuel : "
+    f"{ullage_fuel_t0_L:.2f} L "
+    f"({ullage_fuel_t0_pct:.2f} %)"
 )
 
-print(f"  LOX  : " f"{ullage_lox_release_L:.2f} L " f"({ullage_lox_release_pct:.2f} %)")
+print(
+    f"  LOX  : "
+    f"{ullage_lox_t0_L:.2f} L "
+    f"({ullage_lox_t0_pct:.2f} %)"
+)
+
+
+print(
+    f"\nAt hold-down release "
+    f"(t={t_break:.3f} s):"
+)
+
+print(
+    f"  Fuel : "
+    f"{ullage_fuel_release_L:.2f} L "
+    f"({ullage_fuel_release_pct:.2f} %)"
+)
+
+print(
+    f"  LOX  : "
+    f"{ullage_lox_release_L:.2f} L "
+    f"({ullage_lox_release_pct:.2f} %)"
+)
 
 print("=========================================\n")
 
@@ -1363,7 +1860,9 @@ F_flight = F_eng[mask_after_break].copy()
 
 
 if len(t_flight) < 2:
-    raise RuntimeError("Not enough time points after hold-down release.")
+    raise RuntimeError(
+        "Not enough time points after hold-down release."
+    )
 
 
 # ============================================================
@@ -1383,7 +1882,9 @@ F_break = float(
     )
 )
 
-mask_before_break = t_total < t_break
+mask_before_break = (
+    t_total < t_break
+)
 
 t_hold_down = np.concatenate(
     (
@@ -1423,14 +1924,20 @@ impulse_rocketpy = np.trapezoid(
     t_flight,
 )
 
-impulse_fraction_lost = 100.0 * impulse_hold_down / nominal_total_impulse
+impulse_fraction_lost = (
+    100.0
+    * impulse_hold_down
+    / nominal_total_impulse
+)
 
 
 # ------------------------------------------------------------
 # Plot
 # ------------------------------------------------------------
 
-fig, ax = plt.subplots(figsize=(9, 5.5))
+fig, ax = plt.subplots(
+    figsize=(9, 5.5)
+)
 
 
 # Thrust lost before release
@@ -1473,11 +1980,17 @@ ax.axvline(
 )
 
 
-ax.set_title(f"Thrust Curve — {thrust_curve_mode.capitalize()} Mode")
+ax.set_title(
+    f"Thrust Curve — {thrust_curve_mode.capitalize()} Mode"
+)
 
-ax.set_xlabel("Time from start of ramp-up [s]")
+ax.set_xlabel(
+    "Time from start of ramp-up [s]"
+)
 
-ax.set_ylabel("Thrust [N]")
+ax.set_ylabel(
+    "Thrust [N]"
+)
 
 ax.grid(
     True,
@@ -1531,12 +2044,14 @@ ax.annotate(
 )
 
 
-ax.legend(loc="best")
+ax.legend(
+    loc="best"
+)
 
 fig.tight_layout()
 
 
-if write_to_file and output_thrust_curve:
+if (write_to_file and output_thrust_curve):
     fig.savefig(
         os.path.join(
             DATA_DIR,
@@ -1567,15 +2082,17 @@ header_line = f"B3_{version} 240 200 0 0.001 0.001 ERT"
 with open(eng_filename, "w") as f:
     f.write(header_line + "\n")
 
-    for t_value, F_value in zip(t_flight, F_flight):
+    for (t_value, F_value) in zip(t_flight, F_flight):
         # RocketPy/RASP .eng import rejects a 0 s / 0 N point.
         # Normally release happens at positive thrust anyway.
-        if np.isclose(
-            t_value,
-            0.0,
-        ) and np.isclose(
-            F_value,
-            0.0,
+        if (np.isclose(
+                t_value,
+                0.0,
+            )
+            and np.isclose(
+                F_value,
+                0.0,
+            )
         ):
             continue
 
@@ -1594,7 +2111,6 @@ ullage_fuel_flight_m3 = ullage_fuel_m3[mask_after_break]
 
 ullage_lox_flight_m3 = ullage_lox_m3[mask_after_break]
 
-
 def write_ullage_csv(
     filename,
     t,
@@ -1603,7 +2119,8 @@ def write_ullage_csv(
 
     if len(t) != len(ullage):
         raise ValueError(
-            f"Time and ullage arrays have different " f"lengths for {filename}."
+            f"Time and ullage arrays have different "
+            f"lengths for {filename}."
         )
 
     with open(filename, mode="w", newline="") as file:
@@ -1617,7 +2134,6 @@ def write_ullage_csv(
                     f"{ui:.8f}",
                 ]
             )
-
 
 ethanol_csv_path = os.path.join(
     DATA_DIR,
@@ -1644,7 +2160,7 @@ write_ullage_csv(
 
 
 # This includes the cutoff phase.
-t_end = t_flight[-1]  # Full burn duration after hold-down break
+t_end = t_flight[-1] # Full burn duration after hold-down break
 
 
 # ============================================================
@@ -1652,15 +2168,27 @@ t_end = t_flight[-1]  # Full burn duration after hold-down break
 # ============================================================
 
 # TODO: look into https://coolprop.org/fluid_properties/fluids/Nitrogen.html
-rho_n2_lox_tank = 6000000.0 * 0.028 / (8.314 * 178.15)
+rho_n2_lox_tank = (
+    6000000.0 * 0.028
+    / (8.314 * 178.15)
+)
 
-rho_n2_ethanol_tank = 6000000.0 * 0.028 / (8.314 * 293.15)
+rho_n2_ethanol_tank = (
+    6000000.0 * 0.028
+    / (8.314 * 293.15)
+)
 
 
 # N2 present in the propellant tank ullages during flight
-m_n2_lox_ullage = rho_n2_lox_tank * ullage_lox_flight_m3
+m_n2_lox_ullage = (
+    rho_n2_lox_tank
+    * ullage_lox_flight_m3
+)
 
-m_n2_ethanol_ullage = rho_n2_ethanol_tank * ullage_fuel_flight_m3
+m_n2_ethanol_ullage = (
+    rho_n2_ethanol_tank
+    * ullage_fuel_flight_m3
+)
 
 
 # ============================================================
@@ -1669,9 +2197,15 @@ m_n2_ethanol_ullage = rho_n2_ethanol_tank * ullage_fuel_flight_m3
 
 m_copv_initial = m_n2_copv
 
-m_copv_lox_vs_time = m_n2_copv - m_n2_lox_ullage
+m_copv_lox_vs_time = (
+    m_n2_copv
+    - m_n2_lox_ullage
+)
 
-m_copv_eth_vs_time = m_n2_copv - m_n2_ethanol_ullage
+m_copv_eth_vs_time = (
+    m_n2_copv
+    - m_n2_ethanol_ullage
+)
 
 
 if np.any(m_copv_lox_vs_time < 0.0):
@@ -1733,8 +2267,8 @@ with open(copv_eth_csv_path, mode="w", newline="") as file:
 # ============================================================
 env = Environment(latitude=latitude, longitude=longitude, elevation=elevation)
 env.set_date(date=(annee, mois, jour, heure, minute))
-env.set_atmospheric_model(type="Windy", file="ECMWF")
-# env.set_atmospheric_model(type="standard_atmosphere")
+#env.set_atmospheric_model(type="Windy", file="ECMWF")
+env.set_atmospheric_model(type="standard_atmosphere")
 # env.set_atmospheric_model( # +90° crosswind
 #     type="custom_atmosphere",
 #     wind_u=-6.472,
@@ -1750,18 +2284,18 @@ env.set_atmospheric_model(type="Windy", file="ECMWF")
 # Ullage Functions
 # ============================================================
 lox_tank_ullage = Function(
-    lox_csv_path,
-    interpolation="linear",
-    extrapolation="constant",
-    inputs="Time [s]",
-    outputs="Ullage Volume [m^3]",
+    lox_csv_path, 
+    interpolation="linear", 
+    extrapolation="constant", 
+    inputs="Time [s]", 
+    outputs="Ullage Volume [m^3]"
 )
 ethanol_tank_ullage = Function(
-    ethanol_csv_path,
-    interpolation="linear",
-    extrapolation="constant",
-    inputs="Time [s]",
-    outputs="Ullage Volume [m^3]",
+    ethanol_csv_path, 
+    interpolation="linear", 
+    extrapolation="constant", 
+    inputs="Time [s]", 
+    outputs="Ullage Volume [m^3]"
 )
 
 
@@ -1770,15 +2304,14 @@ ethanol_tank_ullage = Function(
 # ============================================================
 lox = Fluid(name="Lox", density=m_lox_density)
 ethanol = Fluid(name="Ethanol", density=m_eth_density)
-pressurizing_gas_lox = Fluid(name="N2", density=6000000 * 0.028 / (8.314 * 178.15))
-pressurizing_gas_ethanol = Fluid(name="N2", density=6000000 * 0.028 / (8.314 * 293.15))
+pressurizing_gas_lox = Fluid(name="N2", density=6000000*0.028/(8.314*178.15))
+pressurizing_gas_ethanol = Fluid(name="N2", density=6000000*0.028/(8.314*293.15))
 pressurizing_gas = Fluid(name="N2", density=600)
 
 
 # ============================================================
 # Tanks — hauteur dérivée du volume + rayon + choix de calottes
 # ============================================================
-
 
 def compute_tank_height(volume: float, radius: float, spherical_caps: bool) -> float:
     """
@@ -1821,38 +2354,31 @@ def compute_tank_height(volume: float, radius: float, spherical_caps: bool) -> f
     h_cyl = (volume - cap_volume) / (math.pi * radius**2)
     return h_cyl + 2 * radius
 
-
 tank_height = compute_tank_height(tank_volume, r_int, tank_spherical_caps)
-tank_geometry_lox = CylindricalTank(
-    r_int, tank_height, spherical_caps=tank_spherical_caps
-)
-tank_geometry_ethanol = CylindricalTank(
-    r_int, tank_height, spherical_caps=tank_spherical_caps
-)
+tank_geometry_lox = CylindricalTank(r_int, tank_height, spherical_caps=tank_spherical_caps)
+tank_geometry_ethanol = CylindricalTank(r_int, tank_height, spherical_caps=tank_spherical_caps)
 
 lox_tank = UllageBasedTank(
-    name="LOX Tank",
-    flux_time=t_end,
+    name="LOX Tank", 
+    flux_time=t_end, 
     geometry=tank_geometry_lox,
-    gas=pressurizing_gas_lox,
-    liquid=lox,
+    gas=pressurizing_gas_lox, 
+    liquid=lox, 
     ullage=lox_tank_ullage,
 )
-# print("Tank volume (recalculé par RocketPy):", tank_geometry_lox.volume())
+#print("Tank volume (recalculé par RocketPy):", tank_geometry_lox.volume())
 
 ethanol_tank = UllageBasedTank(
-    name="Ethanol Tank",
-    flux_time=t_end,
+    name="Ethanol Tank", 
+    flux_time=t_end, 
     geometry=tank_geometry_ethanol,
-    gas=pressurizing_gas_ethanol,
-    liquid=ethanol,
+    gas=pressurizing_gas_ethanol, 
+    liquid=ethanol, 
     ullage=ethanol_tank_ullage,
 )
 
 copv_height = compute_tank_height(copv_volume, r_int_copv, copv_spherical_caps)
-pressure_tank_geometry = CylindricalTank(
-    r_int_copv, copv_height, spherical_caps=copv_spherical_caps
-)
+pressure_tank_geometry = CylindricalTank(r_int_copv, copv_height, spherical_caps=copv_spherical_caps)
 
 copv_lox_mass = Function(
     copv_lox_csv_path,
@@ -1912,20 +2438,37 @@ B3.add_tank(pressure_tank_lox, position=pos_copv_mbay)
 B3.add_tank(ethanol_tank, position=pos_eth)
 B3.add_tank(pressure_tank_eth, position=pos_copv_pbay)
 
-expected_fluid_mass_release = m_vehicle[idx_break] - m_dry
+expected_fluid_mass_release = (
+    m_vehicle[idx_break]
+    - m_dry
+)
 
-rocketpy_fluid_mass_release = B3.propellant_mass(0)
+rocketpy_fluid_mass_release = (
+    B3.propellant_mass(0)
+)
 
-mass_error = rocketpy_fluid_mass_release - expected_fluid_mass_release
+mass_error = (
+    rocketpy_fluid_mass_release
+    - expected_fluid_mass_release
+)
 
 
 print("\n========== ROCKETPY MOTOR MASS CHECK ==========")
 
-print(f"Expected fluid mass at release : " f"{expected_fluid_mass_release:.8f} kg")
+print(
+    f"Expected fluid mass at release : "
+    f"{expected_fluid_mass_release:.8f} kg"
+)
 
-print(f"RocketPy fluid mass at release : " f"{rocketpy_fluid_mass_release:.8f} kg")
+print(
+    f"RocketPy fluid mass at release : "
+    f"{rocketpy_fluid_mass_release:.8f} kg"
+)
 
-print(f"Mass bookkeeping error         : " f"{mass_error:+.8f} kg")
+print(
+    f"Mass bookkeeping error         : "
+    f"{mass_error:+.8f} kg"
+)
 
 print("================================================\n")
 
@@ -1949,11 +2492,12 @@ firehorn2 = Rocket(
     radius=r_rocket,
     mass=m_dry,
     inertia=(Ix, Iy, Iz),
-    power_off_drag=drag_coeff_rocket,
-    power_on_drag=drag_coeff_rocket,
+    power_off_drag="cd_mach.csv",
+    power_on_drag="cd_mach.csv",
     center_of_mass_without_motor=z_cm,
     coordinate_system_orientation="tail_to_nose",
 )
+
 
 firehorn2.add_cm_eccentricity(x=0, y=y_cm)
 firehorn2.add_motor(motor=B3, position=0)
@@ -1964,9 +2508,7 @@ firehorn2.set_rail_buttons(
 )
 
 firehorn2.add_nose(
-    length=l_nosecone,
-    kind="powerseries",
-    power=0.5,
+    length=l_nosecone, kind="powerseries", power=0.5,
     position=Nosecone.z + l_nosecone,
 )
 
@@ -1988,21 +2530,13 @@ firehorn2.add_tail(
 )
 
 firehorn2.add_parachute(
-    name="reefed",
-    cd_s=drag_coeff_para_reefed,
-    trigger="apogee",
-    sampling_rate=100,
-    lag=7,
-    noise=(0, 0, 0),
+    name="reefed", cd_s=drag_coeff_para_reefed,
+    trigger="apogee", sampling_rate=100, lag=7, noise=(0, 0, 0),
 )
 
 firehorn2.add_parachute(
-    name="unreefed",
-    cd_s=drag_coeff_para_unreefed,
-    trigger=trig_alt_para,
-    sampling_rate=100,
-    lag=0,
-    noise=(0, 0, 0),
+    name="unreefed", cd_s=drag_coeff_para_unreefed,
+    trigger=trig_alt_para, sampling_rate=100, lag=0, noise=(0, 0, 0),
 )
 
 firehorn2.draw()
@@ -2033,17 +2567,14 @@ if not save_files:
         ethanol_csv_path,
         lox_csv_path,
         copv_lox_csv_path,
-        copv_eth_csv_path,
+        copv_eth_csv_path
     ]
     for _f in intermediate_files:
         try:
             os.remove(_f)
         except FileNotFoundError:
             pass
-    print(
-        f"save_files=False : fichiers intermédiaires supprimés "
-        f"({len(intermediate_files)} fichiers)."
-    )
+    print(f"save_files=False : fichiers intermédiaires supprimés ({len(intermediate_files)} fichiers).")
 
 
 # ============================================================
@@ -2057,30 +2588,30 @@ print(f"Apogee (AGL): {flight.altitude(flight.apogee_time):.1f} [m]")
 print(f"Out of rail time: {(t_break + flight.out_of_rail_time):.3f} [s]")
 print(f"Burn out time: {(t_break + flight.rocket.motor.burn_out_time):.3f} [s]")
 print(f"Time to apogee: {(t_break + flight.apogee_time):.3f} [s]")
-print(
-    f"Disreef time: "
-    f"{(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]"  # noqa: E501  # pylint: disable=line-too-long
-)
+print(f"Disreef time: {(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]")
 print(f"Time of impact: {(t_break + flight.t_final):.3f} [s]")
 print(f"Max Mach: {flight.max_mach_number:.3f} [-]")
 print(f"Max velocity: {flight.max_speed:.2f} [m/s]")
 print(f"Max acceleration: {flight.max_acceleration:.2f} [m/s^2]")
 print(f"Out of rail velocity: {flight.out_of_rail_velocity:.2f} [m/s]")
-print(
-    f"Rail departure angle of attack: "
-    f"{flight.angle_of_attack(flight.out_of_rail_time):.3f} [°]"
-)
+print(f"Rail departure angle of attack: {flight.angle_of_attack(flight.out_of_rail_time):.3f} [°]")
 
 flight.stability_margin.plot()
 flight.prints.stability_margin()
-print("Rail exit velocity:", flight.out_of_rail_velocity)
-print("Rail exit stability:", flight.out_of_rail_stability_margin)
-print("Max Q:", flight.max_dynamic_pressure)
-print("Max Q time:", t_break + flight.max_dynamic_pressure_time)
+print("Rail exit velocity:",
+      flight.out_of_rail_velocity)
+print("Rail exit stability:",
+      flight.out_of_rail_stability_margin)
+print("Max Q:",
+      flight.max_dynamic_pressure)
+print("Max Q time:",
+      t_break + flight.max_dynamic_pressure_time)
 
 tq = flight.max_dynamic_pressure_time
-print("AoA at max-Q:", flight.angle_of_attack(tq))
-print("SM at max-Q:", flight.stability_margin(tq))
+print("AoA at max-Q:",
+      flight.angle_of_attack(tq))
+print("SM at max-Q:",
+      flight.stability_margin(tq))
 flight.angle_of_attack.plot()
 flight.dynamic_pressure.plot()
 
@@ -2090,7 +2621,6 @@ if write_to_file:
     if output_general:
         import importlib
         import output_into_excel
-
         importlib.reload(output_into_excel)
         from output_into_excel import write_flight_outputs_vertical
 
@@ -2106,98 +2636,74 @@ if write_to_file:
     # --- Graphes -> PNG ---
     t_plot = np.linspace(0.01, flight.t_final * 0.999, n_points)
 
+    if output_euler_angles:
+        phi = np.array([flight.phi(t) for t in t_plot])
+        theta = np.array([flight.theta(t) for t in t_plot])
+        psi = np.array([flight.psi(t) for t in t_plot])
+        plt.figure(figsize=(9, 5))
+        plt.plot(t_plot, phi, label="φ — Spin")
+        plt.plot(t_plot, theta, label="θ — Nutation")
+        plt.plot(t_plot, psi, label="ψ — Precession")
+        plt.xlabel("Time [s]"); plt.ylabel("Angle [°]"); plt.title("Euler Angles")
+        plt.legend(); plt.grid(True, alpha=0.3)
+        plt.savefig(os.path.join(DATA_DIR, f"euler_angles_{version}.png"), dpi=150, bbox_inches="tight")
+        plt.show()
+
     if output_stability:
-        margin = flight.stability_margin(t_plot)
+        margin = np.array([
+            flight.stability_margin(t)
+            for t in t_plot
+        ])
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, margin, color="firebrick")
         plt.axhline(0, color="black", linewidth=0.8, linestyle="--")
-        plt.xlabel("Time [s]")
-        plt.ylabel("Static margin [calibers]")
-        plt.title("Stability Margin vs Time")
+        plt.xlabel("Time [s]"); plt.ylabel("Static margin [calibers]"); plt.title("Stability Margin vs Time")
         plt.grid(True, alpha=0.3)
-        plt.savefig(
-            os.path.join(DATA_DIR, f"stability_margin_{version}.png"),
-            dpi=150,
-            bbox_inches="tight",
-        )
+        plt.savefig(os.path.join(DATA_DIR, f"stability_margin_{version}.png"), dpi=150, bbox_inches="tight")
         plt.show()
 
     if output_stability:
         # Centre de pression au cours du temps : RocketPy donne cp_position
         # comme fonction du Mach (pas directement du temps), on compose donc
         # avec le Mach instantané pour obtenir cp(t).
-        mach_t = flight.mach_number(t_plot)
-        cp_position = firehorn2.cp_position(mach_t)
-        cg_position = firehorn2.center_of_mass(t_plot)
+        mach_t = np.array([flight.mach_number(t) for t in t_plot])
+        cp_position = np.array([firehorn2.cp_position(m) for m in mach_t])
+        cg_position = np.array([firehorn2.center_of_mass(t) for t in t_plot])
         plt.figure(figsize=(9, 5))
-        plt.plot(
-            t_plot, cp_position, color="darkviolet", label="Center of Pressure (CP)"
-        )
-        plt.plot(
-            t_plot,
-            cg_position,
-            color="gray",
-            linestyle="--",
-            label="Center of Gravity (CG)",
-        )
-        plt.xlabel("Time [s]")
-        plt.ylabel("Position [m]")
-        plt.title("Center of Pressure vs Time")
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.savefig(
-            os.path.join(DATA_DIR, f"center_of_pressure_{version}.png"),
-            dpi=150,
-            bbox_inches="tight",
-        )
+        plt.plot(t_plot, cp_position, color="darkviolet", label="Center of Pressure (CP)")
+        plt.plot(t_plot, cg_position, color="gray", linestyle="--", label="Center of Gravity (CG)")
+        plt.xlabel("Time [s]"); plt.ylabel("Position [m]"); plt.title("Center of Pressure vs Time")
+        plt.legend(); plt.grid(True, alpha=0.3)
+        plt.savefig(os.path.join(DATA_DIR, f"center_of_pressure_{version}.png"), dpi=150, bbox_inches="tight")
         plt.show()
 
     if output_trajectory:
-        altitude = flight.altitude(t_plot)
+        altitude = np.array([flight.altitude(t) for t in t_plot])
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, altitude, color="steelblue")
-        plt.xlabel("Time [s]")
-        plt.ylabel("Altitude AGL [m]")
-        plt.title("Altitude vs Time")
+        plt.xlabel("Time [s]"); plt.ylabel("Altitude AGL [m]"); plt.title("Altitude vs Time")
         plt.grid(True, alpha=0.3)
-        plt.savefig(
-            os.path.join(DATA_DIR, f"trajectory_{version}.png"),
-            dpi=150,
-            bbox_inches="tight",
-        )
+        plt.savefig(os.path.join(DATA_DIR, f"trajectory_{version}.png"), dpi=150, bbox_inches="tight")
         plt.show()
 
     if output_velocity:
-        speed = flight.speed(t_plot)
+        speed = np.array([flight.speed(t) for t in t_plot])
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, speed, color="darkorange")
-        plt.xlabel("Time [s]")
-        plt.ylabel("Speed [m/s]")
-        plt.title("Speed vs Time")
+        plt.xlabel("Time [s]"); plt.ylabel("Speed [m/s]"); plt.title("Speed vs Time")
         plt.grid(True, alpha=0.3)
-        plt.savefig(
-            os.path.join(DATA_DIR, f"velocity_{version}.png"),
-            dpi=150,
-            bbox_inches="tight",
-        )
+        plt.savefig(os.path.join(DATA_DIR, f"velocity_{version}.png"), dpi=150, bbox_inches="tight")
         plt.show()
 
     if output_acceleration:
-        accel = flight.acceleration(t_plot)
+        accel = np.array([flight.acceleration(t) for t in t_plot])
         plt.figure(figsize=(9, 5))
         plt.plot(t_plot, accel, color="seagreen")
-        plt.xlabel("Time [s]")
-        plt.ylabel("Acceleration [m/s²]")
-        plt.title("Acceleration vs Time")
+        plt.xlabel("Time [s]"); plt.ylabel("Acceleration [m/s²]"); plt.title("Acceleration vs Time")
         plt.grid(True, alpha=0.3)
-        plt.savefig(
-            os.path.join(DATA_DIR, f"acceleration_{version}.png"),
-            dpi=150,
-            bbox_inches="tight",
-        )
+        plt.savefig(os.path.join(DATA_DIR, f"acceleration_{version}.png"), dpi=150, bbox_inches="tight")
         plt.show()
 
-    # output_thrust_curve est déjà sauvegardé plus haut (au moment du tracé de
-    # la courbe)
+    # output_thrust_curve est déjà sauvegardé plus haut (au moment du tracé de la courbe)
 else:
     print("write_to_file=False : aucun fichier de sortie écrit.")
