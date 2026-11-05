@@ -51,9 +51,7 @@ class Bay:
 
             # contribution of the holed cylinder
             Iz_cylinder = mass_cylinder * self.radius**2
-            Ix_cylinder = (
-                1 / 12 * mass_cylinder * (6 * self.radius**2 + self.length**2)
-            )
+            Ix_cylinder = 1 / 12 * mass_cylinder * (6 * self.radius**2 + self.length**2)
 
             # contribution of the disks closing the cylinder
             Iz_disk = 1 / 2 * mass_disk * self.radius**2

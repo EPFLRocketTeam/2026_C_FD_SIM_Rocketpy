@@ -4,20 +4,30 @@ of the Excel input file and populates a `Structure` dataclass.
 Every field has a default value. Rows with section headers (no numeric value
 in column B) are automatically skipped.
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, fields
 from pathlib import Path
 from openpyxl import load_workbook
 
-SHEET_NAME   = "Structure"
-NAME_COLUMN  = "A"
+SHEET_NAME = "Structure"
+NAME_COLUMN = "A"
 VALUE_COLUMN = "B"
 COM1_VALUE_COLUMN = "D"  # Mass column used when mode_CoM == 1.
 FIRST_DATA_ROW = 2
 
 MASS_FIELDS = {
-    "m_bt", "m_ebay", "m_lox", "m_aerocover", "m_pbay1", "m_eth", 
-    "m_pbay2", "m_avbay", "m_rebay", "m_nosecone", "m_fins",
+    "m_bt",
+    "m_ebay",
+    "m_lox",
+    "m_aerocover",
+    "m_pbay1",
+    "m_eth",
+    "m_pbay2",
+    "m_avbay",
+    "m_rebay",
+    "m_nosecone",
+    "m_fins",
 }
 
 
@@ -25,18 +35,20 @@ MASS_FIELDS = {
 class Structure:
     # ROCKET
     mode_CoM: int = 0  # Mode 0 uses input values; mode 1 uses measured mass and CoM.
-    mode_Inertia: int = 0  # Mode 0 uses input values; mode 1 uses hardcoded EuRoC1 values.
+    mode_Inertia: int = (
+        0  # Mode 0 uses input values; mode 1 uses hardcoded EuRoC1 values.
+    )
     l_center_of_mass: float = 266
     m_dry_measured: float = 84500
-    r_rocket:     float = 0.1215
+    r_rocket: float = 0.1215
     drag_coeff_rocket: float = 0.38
 
     # BOAT TAIL
-    top_r_bt:    float = 0.1215
+    top_r_bt: float = 0.1215
     bottom_r_bt: float = 0.070
-    l_bt:        float = 0.41755
-    m_bt:        float = 1.0
-    r_nozzle:    float = 0.04946
+    l_bt: float = 0.41755
+    m_bt: float = 1.0
+    r_nozzle: float = 0.04946
 
     # ENGINE BAY
     l_ebay: float = 0.756
@@ -49,9 +61,9 @@ class Structure:
 
     # AEROCOVER
     pos_aerocover: float = 0.55
-    m_aerocover:   float = 2.41
-    l_aerocover:   float = 1.6558
-    r_aerocover:   float = 0.03
+    m_aerocover: float = 2.41
+    l_aerocover: float = 1.6558
+    r_aerocover: float = 0.03
 
     # PBAY 1
     pos_copv_mbay: float = 2.22531
@@ -73,9 +85,9 @@ class Structure:
     m_avbay: float = 9.232
 
     # RE BAY
-    l_rebay:  float = 0.715
-    m_rebay:  float = 11.044
-    drag_coeff_para_reefed:   float = 1.6
+    l_rebay: float = 0.715
+    m_rebay: float = 11.044
+    drag_coeff_para_reefed: float = 1.6
     drag_coeff_para_unreefed: float = 14.06
     trig_alt_para: float = 400.0
 
@@ -92,15 +104,15 @@ class Structure:
     # COPV
     r_int_copv: float = 0.0858
     copv_spherical_caps: bool = False
-    copv_volume:     float = 0.009
+    copv_volume: float = 0.009
 
     # FINS
-    n_fins:       float = 4.0
-    env_fins:     float = 0.3
-    rc_fins:      float = 0.671
-    tc_fins:      float = 0.161
-    pos_fins:     float = 1.1315
-    cangle_fins:  float = 0.0
+    n_fins: float = 4.0
+    env_fins: float = 0.3
+    rc_fins: float = 0.671
+    tc_fins: float = 0.161
+    pos_fins: float = 1.1315
+    cangle_fins: float = 0.0
     sweep_l_fins: float = 0.539
     m_fins: float = 2.418786
 
@@ -148,7 +160,7 @@ def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Struct
         )
 
     ws = wb[sheet_name]
-    name_col_idx  = ord(NAME_COLUMN)  - ord("A") + 1
+    name_col_idx = ord(NAME_COLUMN) - ord("A") + 1
     value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1
     com1_col_idx = ord(COM1_VALUE_COLUMN) - ord("A") + 1
 
@@ -185,7 +197,6 @@ def read_structure(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Struct
     mode_CoM = int(file_values.get("mode_CoM", Structure.mode_CoM))
     if mode_CoM == 1:
         file_values.update(com1_values)
-
 
     valid = {f.name for f in fields(Structure)}
     unknown = set(file_values) - valid

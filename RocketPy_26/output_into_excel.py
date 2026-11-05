@@ -63,8 +63,8 @@ def write_flight_outputs_vertical(
     """Find the Excel file in the indicated directory and write results
     vertically. Add dry_mass and wet_mass at the top of the mass section,
     when they are given.
-    If it is given the nominal_total_impulse replaces the RocketPy's calculated 
-    'Total impulse' (which excludes the hold-down phase) with the 
+    If it is given the nominal_total_impulse replaces the RocketPy's calculated
+    'Total impulse' (which excludes the hold-down phase) with the
     requested nominal impulse (which includes it)."""
     filepath = Path(directory) / f"{version}.xlsx"
 
