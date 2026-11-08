@@ -195,7 +195,7 @@ Nosecone        = Bay("Nosecone",          RecoveryBay.z + RecoveryBay.length,  
 
 rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1, ETH, PressurantBay2, AVBay, RecoveryBay, Nosecone]
 
-
+L_rocket = Nosecone.z + Nosecone.length # position tip of rocket
 # ============================================================
 # CoM et moment d'inertie
 # ============================================================
@@ -222,7 +222,6 @@ elif mode_CoM == 1:
 
     for bay in rocket:
         z_local, y_local = bay.center_masse()
-        # print(bay.nom, bay.mass)
         z_cm += bay.mass * (bay.z + z_local)
         y_cm += bay.mass * (bay.y + y_local)
 
@@ -259,7 +258,6 @@ if mode_Inertia == 0:
 
     # si mode_CoM == 1, il faut ajouter l'effet de la m_dry_measured
     if mode_CoM == 1:
-        L_rocket = Nosecone.z + Nosecone.length
 
         # Inertie propre : approximation cylindre homogène
         Ix_meas = m_dry_measured * (3 * r_rocket**2 + L_rocket**2) / 12
@@ -290,9 +288,6 @@ else:
         "Mode of inertia has to be 0 or 1."
         "Setting Inertia to 0."
     )
-
-
-#print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
 
 # ============================================================
 # Propulsion reference quantities
@@ -926,43 +921,6 @@ if not np.isclose(
         f"{total_impulse:.2f} N.s"
     )
 
-print(
-    "\n========== THRUST CURVE =========="
-)
-
-print(
-    f"Mode: {thrust_curve_mode}"
-)
-
-print(
-    f"Equivalent rectangular burn time : "
-    f"{equivalent_burn_time:.4f} s"
-)
-
-print(
-    f"Main physical phase duration      : "
-    f"{main_phase_duration:.4f} s"
-)
-
-print(
-    f"End of thrust ramp-down           : "
-    f"{t_shutdown:.4f} s"
-)
-
-print(
-    f"End of cutoff / propellant flow   : "
-    f"{t_cutoff_end:.4f} s"
-)
-
-print(
-    f"Integrated impulse                : "
-    f"{computed_impulse:.2f} N.s "
-    f"(target {total_impulse:.2f} N.s)"
-)
-
-print(
-    "==================================\n"
-)
 
 # This is the main combustion phase (no longer the full burn duration)
 # burn_time = (
@@ -1381,9 +1339,9 @@ beta = np.deg2rad(beta_rail)
 t_array = t_total
 
 denominator = (
-    np.cos(beta)
-    - coeff_fr_rail
-    * np.sin(beta)
+    np.cos(alpha + beta)
+    + coeff_fr_rail
+    * np.sin(alpha + beta)
 )
 
 
@@ -1399,7 +1357,7 @@ F_HD = (
     - W
     * (
         np.cos(alpha)
-        - coeff_fr_rail
+        + coeff_fr_rail
         * np.sin(alpha)
     )
 ) / denominator
@@ -1546,56 +1504,6 @@ if not np.isclose(
     raise RuntimeError(
         "LOX is not fully depleted by end of cutoff."
     )
-
-
-print(
-    "\n========== PROPELLANT =========="
-)
-
-print(
-    f"Fuel total loaded       : "
-    f"{m_fuel_total:.4f} kg"
-)
-
-print(
-    f"LOX total loaded        : "
-    f"{m_ox_total:.4f} kg"
-)
-
-print(
-    f"Wet mass after filling  : "
-    f"{m_wet:.4f} kg"
-)
-
-print(
-    f"Vehicle mass at t=0     : "
-    f"{m_wet_t0:.4f} kg"
-)
-
-print(
-    f"Hold-down release       : "
-    f"{t_break:.4f} s"
-)
-
-print(
-    f"Vehicle mass at release : "
-    f"{m_vehicle[idx_break]:.4f} kg"
-)
-
-print(
-    f"Fuel lost before release: "
-    f"{mass_lost_fuel_before_break:.4f} kg"
-)
-
-print(
-    f"LOX lost before release : "
-    f"{mass_lost_ox_before_break:.4f} kg"
-)
-
-print(
-    "================================\n"
-)
-
 
 
 # ============================================================
@@ -1791,58 +1699,6 @@ V_lox_release = (
     V_lox_release,
     "LOX tank at hold-down release",
 )
-
-
-print("\n================ ULLAGE =================")
-
-print("Immediately after filling:")
-
-print(
-    f"  Fuel : "
-    f"{ullage_fuel_fill_L:.2f} L "
-    f"({ullage_fuel_fill_pct:.2f} %)"
-)
-
-print(
-    f"  LOX  : "
-    f"{ullage_lox_fill_L:.2f} L "
-    f"({ullage_lox_fill_pct:.2f} %)"
-)
-
-
-print("\nAt t=0 (start of ramp-up):")
-
-print(
-    f"  Fuel : "
-    f"{ullage_fuel_t0_L:.2f} L "
-    f"({ullage_fuel_t0_pct:.2f} %)"
-)
-
-print(
-    f"  LOX  : "
-    f"{ullage_lox_t0_L:.2f} L "
-    f"({ullage_lox_t0_pct:.2f} %)"
-)
-
-
-print(
-    f"\nAt hold-down release "
-    f"(t={t_break:.3f} s):"
-)
-
-print(
-    f"  Fuel : "
-    f"{ullage_fuel_release_L:.2f} L "
-    f"({ullage_fuel_release_pct:.2f} %)"
-)
-
-print(
-    f"  LOX  : "
-    f"{ullage_lox_release_L:.2f} L "
-    f"({ullage_lox_release_pct:.2f} %)"
-)
-
-print("=========================================\n")
 
 
 # ============================================================
@@ -2412,9 +2268,6 @@ pressure_tank_eth = MassBasedTank(
     liquid=pressurizing_gas,
 )
 
-# print(f"Tank height: {tank_height} m")
-# print(f"Copv height: {copv_height} m")
-
 
 # ============================================================
 # Motor
@@ -2451,26 +2304,6 @@ mass_error = (
     rocketpy_fluid_mass_release
     - expected_fluid_mass_release
 )
-
-
-print("\n========== ROCKETPY MOTOR MASS CHECK ==========")
-
-print(
-    f"Expected fluid mass at release : "
-    f"{expected_fluid_mass_release:.8f} kg"
-)
-
-print(
-    f"RocketPy fluid mass at release : "
-    f"{rocketpy_fluid_mass_release:.8f} kg"
-)
-
-print(
-    f"Mass bookkeeping error         : "
-    f"{mass_error:+.8f} kg"
-)
-
-print("================================================\n")
 
 
 if not np.isclose(
@@ -2539,9 +2372,6 @@ firehorn2.add_parachute(
     trigger=trig_alt_para, sampling_rate=100, lag=0, noise=(0, 0, 0),
 )
 
-firehorn2.draw()
-
-
 # ============================================================
 # Flight
 # ============================================================
@@ -2580,40 +2410,101 @@ if not save_files:
 # ============================================================
 # Outputs — pilotés par les cases output_* de l'Excel (feuille Parameters)
 # ============================================================
+
+#firehorn2.draw()
+
+print("\n========== FLIGHT SUMMARY ==========")
 print(f"Impulse (nominale, hold-down inclus): {nominal_total_impulse} [Ns]")
-print(f"Burn time: {t_cutoff_end:.3f} [s]")
 print(f"Dry mass: {m_dry:.2f} [kg]")
 print(f"Wet mass: {m_wet:.2f} [kg]")
 print(f"Apogee (AGL): {flight.altitude(flight.apogee_time):.1f} [m]")
-print(f"Out of rail time: {(t_break + flight.out_of_rail_time):.3f} [s]")
-print(f"Burn out time: {(t_break + flight.rocket.motor.burn_out_time):.3f} [s]")
 print(f"Time to apogee: {(t_break + flight.apogee_time):.3f} [s]")
-print(f"Disreef time: {(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]")
-print(f"Time of impact: {(t_break + flight.t_final):.3f} [s]")
 print(f"Max Mach: {flight.max_mach_number:.3f} [-]")
-print(f"Max velocity: {flight.max_speed:.2f} [m/s]")
 print(f"Max acceleration: {flight.max_acceleration:.2f} [m/s^2]")
 print(f"Out of rail velocity: {flight.out_of_rail_velocity:.2f} [m/s]")
-print(f"Rail departure angle of attack: {flight.angle_of_attack(flight.out_of_rail_time):.3f} [°]")
 
-flight.stability_margin.plot()
-flight.prints.stability_margin()
-print("Rail exit velocity:",
-      flight.out_of_rail_velocity)
-print("Rail exit stability:",
-      flight.out_of_rail_stability_margin)
-print("Max Q:",
-      flight.max_dynamic_pressure)
-print("Max Q time:",
-      t_break + flight.max_dynamic_pressure_time)
+#print(f"Burn time: {t_cutoff_end:.3f} [s]")
+#print(f"Out of rail time: {(t_break + flight.out_of_rail_time):.3f} [s]")
+#print(f"Burn out time: {(t_break + flight.rocket.motor.burn_out_time):.3f} [s]")
+#print(f"Disreef time: {(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]")
+#print(f"Rail departure angle of attack: {flight.angle_of_attack(flight.out_of_rail_time):.3f} [°]")
+print("================================\n")
 
-tq = flight.max_dynamic_pressure_time
-print("AoA at max-Q:",
-      flight.angle_of_attack(tq))
-print("SM at max-Q:",
-      flight.stability_margin(tq))
-flight.angle_of_attack.plot()
-flight.dynamic_pressure.plot()
+'''
+print("\n========== FLIGHT CARD EUROCS ==========")
+print(f"    Impulse (nominale, hold-down inclus): {nominal_total_impulse} [Ns]")
+
+print("Vehicle Characteristics")
+print(f"    Wet mass: {m_wet:.2f} [kg]")
+print(f"    Length: {((Nosecone.z + l_nosecone) * 1e3):.2f} [mm]")
+print(f"    Diameter: {(r_rocket * 2 * 1e3):.2f} [mm]")
+print(f"    Position CG (from tip): {((L_rocket - z_cm) * 1e3):.2f} [mm]")
+print(f"    Position CP (from tip): {((L_rocket - firehorn2.cp_position(0)) * 1e3):.2f} [mm]")
+print(f"    Stability margin (off rail): {flight.out_of_rail_stability_margin:.2f}")
+print(f"    Velocity off the rail: {flight.out_of_rail_velocity:.2f} [m/s]")
+print(f"    Max. acceleration: {(flight.max_acceleration/9.81):.2f} [G]")
+print(f"    Max. velocity: {flight.max_mach_number:.3f} [Mach]")
+print(f"    Burn time: {(t_break + flight.rocket.motor.burn_out_time):.3f} [s]")
+print(f"    Time to apogee: {(t_break + flight.apogee_time):.3f} [s]")
+print(f"    Final expected touchdown: {(t_break + flight.t_final):.3f} [s]")
+
+print("Simulation Characteristics")
+print(f"    Apogee 1st stage: {flight.altitude(flight.apogee_time):.1f} [m]")
+print(f"    Touchdown 1st stage: {(t_break + flight.t_final):.3f} [s]")
+print("================================\n")
+'''
+
+#print("\n========== PROPELLANT ==========")
+#print(f"Fuel total loaded       : {m_fuel_total:.4f} kg")
+#print(f"LOX total loaded        : {m_ox_total:.4f} kg")
+#print(f"Wet mass after filling  : {m_wet:.4f} kg")
+#print(f"Vehicle mass at t=0     : {m_wet_t0:.4f} kg")
+#print(f"Hold-down release       : {t_break:.4f} s")
+#print(f"Vehicle mass at release : {m_vehicle[idx_break]:.4f} kg")
+#print(f"Fuel lost before release: {mass_lost_fuel_before_break:.4f} kg")
+#print(f"LOX lost before release : {mass_lost_ox_before_break:.4f} kg")
+#print("================================\n")
+
+#print("\n========== ROCKETPY MOTOR MASS CHECK ==========")
+#print(f"Expected fluid mass at release : {expected_fluid_mass_release:.8f} kg")
+#print(f"RocketPy fluid mass at release : {rocketpy_fluid_mass_release:.8f} kg")
+#print(f"Mass bookkeeping error         : {mass_error:+.8f} kg")
+#print("================================================\n")
+
+#print("\n================ ULLAGE =================")
+#print("Immediately after filling:")
+#print(f"  Fuel : {ullage_fuel_fill_L:.2f} L ({ullage_fuel_fill_pct:.2f} %)")
+#print(f"  LOX  : {ullage_lox_fill_L:.2f} L ({ullage_lox_fill_pct:.2f} %)")
+#print("\nAt t=0 (start of ramp-up):")
+#print(f"  Fuel : {ullage_fuel_t0_L:.2f} L ({ullage_fuel_t0_pct:.2f} %)")
+#print(f"  LOX  : {ullage_lox_t0_L:.2f} L ({ullage_lox_t0_pct:.2f} %)")
+#print(f"\nAt hold-down release (t={t_break:.3f} s):")
+#print(f"  Fuel : {ullage_fuel_release_L:.2f} L ({ullage_fuel_release_pct:.2f} %)")
+#print(f"  LOX  : {ullage_lox_release_L:.2f} L ({ullage_lox_release_pct:.2f} %)")
+#print("=========================================\n")
+
+#print("\n========== THRUST CURVE ==========")
+#print(f"Mode: {thrust_curve_mode}")
+#print(f"Equivalent rectangular burn time : {equivalent_burn_time:.4f} s")
+#print(f"Main physical phase duration      : {main_phase_duration:.4f} s")
+#print(f"End of thrust ramp-down           : {t_shutdown:.4f} s")
+#print(f"End of cutoff / propellant flow   : {t_cutoff_end:.4f} s")
+#print(f"Integrated impulse                : {computed_impulse:.2f} N.s (target {total_impulse:.2f} N.s)")
+#print("==================================\n")
+
+#print("\n========== STABILITY ==========")
+#flight.stability_margin.plot()
+#flight.prints.stability_margin()
+#print("Rail exit stability:", flight.out_of_rail_stability_margin)
+#print("Max Q:", flight.max_dynamic_pressure)
+#print("Max Q time:", t_break + flight.max_dynamic_pressure_time)
+
+#tq = flight.max_dynamic_pressure_time
+#print("AoA at max-Q:", flight.angle_of_attack(tq))
+#print("SM at max-Q:", flight.stability_margin(tq))
+#flight.angle_of_attack.plot()
+#flight.dynamic_pressure.plot()
+#print("==================================\n")
 
 
 if write_to_file:
