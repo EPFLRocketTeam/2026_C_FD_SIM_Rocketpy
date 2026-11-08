@@ -195,7 +195,7 @@ Nosecone        = Bay("Nosecone",          RecoveryBay.z + RecoveryBay.length,  
 
 rocket = [Boattail, EngineBay, LOx, Aerocover, PressurantBay1, ETH, PressurantBay2, AVBay, RecoveryBay, Nosecone]
 
-
+L_rocket = Nosecone.z + Nosecone.length # position tip of rocket
 # ============================================================
 # CoM et moment d'inertie
 # ============================================================
@@ -258,7 +258,6 @@ if mode_Inertia == 0:
 
     # si mode_CoM == 1, il faut ajouter l'effet de la m_dry_measured
     if mode_CoM == 1:
-        L_rocket = Nosecone.z + Nosecone.length
 
         # Inertie propre : approximation cylindre homogène
         Ix_meas = m_dry_measured * (3 * r_rocket**2 + L_rocket**2) / 12
@@ -2416,21 +2415,44 @@ if not save_files:
 
 print("\n========== FLIGHT SUMMARY ==========")
 print(f"Impulse (nominale, hold-down inclus): {nominal_total_impulse} [Ns]")
-#print(f"Burn time: {t_cutoff_end:.3f} [s]")
 print(f"Dry mass: {m_dry:.2f} [kg]")
 print(f"Wet mass: {m_wet:.2f} [kg]")
 print(f"Apogee (AGL): {flight.altitude(flight.apogee_time):.1f} [m]")
-#print(f"Out of rail time: {(t_break + flight.out_of_rail_time):.3f} [s]")
-#print(f"Burn out time: {(t_break + flight.rocket.motor.burn_out_time):.3f} [s]")
 print(f"Time to apogee: {(t_break + flight.apogee_time):.3f} [s]")
-#print(f"Disreef time: {(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]")
-#print(f"Time of impact: {(t_break + flight.t_final):.3f} [s]")
 print(f"Max Mach: {flight.max_mach_number:.3f} [-]")
-#print(f"Max velocity: {flight.max_speed:.2f} [m/s]")
 print(f"Max acceleration: {flight.max_acceleration:.2f} [m/s^2]")
 print(f"Out of rail velocity: {flight.out_of_rail_velocity:.2f} [m/s]")
+
+#print(f"Burn time: {t_cutoff_end:.3f} [s]")
+#print(f"Out of rail time: {(t_break + flight.out_of_rail_time):.3f} [s]")
+#print(f"Burn out time: {(t_break + flight.rocket.motor.burn_out_time):.3f} [s]")
+#print(f"Disreef time: {(t_break + flight.parachute_events[1][0] + flight.parachute_events[1][1].lag):.3f} [s]")
 #print(f"Rail departure angle of attack: {flight.angle_of_attack(flight.out_of_rail_time):.3f} [°]")
 print("================================\n")
+
+'''
+print("\n========== FLIGHT CARD EUROCS ==========")
+print(f"    Impulse (nominale, hold-down inclus): {nominal_total_impulse} [Ns]")
+
+print("Vehicle Characteristics")
+print(f"    Wet mass: {m_wet:.2f} [kg]")
+print(f"    Length: {((Nosecone.z + l_nosecone) * 1e3):.2f} [mm]")
+print(f"    Diameter: {(r_rocket * 2 * 1e3):.2f} [mm]")
+print(f"    Position CG (from tip): {((L_rocket - z_cm) * 1e3):.2f} [mm]")
+print(f"    Position CP (from tip): {((L_rocket - firehorn2.cp_position(0)) * 1e3):.2f} [mm]")
+print(f"    Stability margin (off rail): {flight.out_of_rail_stability_margin:.2f}")
+print(f"    Velocity off the rail: {flight.out_of_rail_velocity:.2f} [m/s]")
+print(f"    Max. acceleration: {(flight.max_acceleration/9.81):.2f} [G]")
+print(f"    Max. velocity: {flight.max_mach_number:.3f} [Mach]")
+print(f"    Burn time: {(t_break + flight.rocket.motor.burn_out_time):.3f} [s]")
+print(f"    Time to apogee: {(t_break + flight.apogee_time):.3f} [s]")
+print(f"    Final expected touchdown: {(t_break + flight.t_final):.3f} [s]")
+
+print("Simulation Characteristics")
+print(f"    Apogee 1st stage: {flight.altitude(flight.apogee_time):.1f} [m]")
+print(f"    Touchdown 1st stage: {(t_break + flight.t_final):.3f} [s]")
+print("================================\n")
+'''
 
 #print("\n========== PROPELLANT ==========")
 #print(f"Fuel total loaded       : {m_fuel_total:.4f} kg")
