@@ -958,7 +958,7 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
         for key, (range_pct, step_pct) in ranges.items():
             grid = np.arange(-range_pct, range_pct + step_pct / 2, step_pct)
             grids[key] = grid if len(grid) > 0 else np.array([0.0])
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(42)
 
         runs = []
         n_failed = 0
