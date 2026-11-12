@@ -6,7 +6,6 @@ from typing import Any
 import numpy as np
 from openpyxl import load_workbook
 
-
 SHEET_NAME = "Simulations"
 HEADER_ROW = 2
 CONFIG_ID_COLUMN = "C"
@@ -18,25 +17,24 @@ FIRST_DATA_ROW = 3
 # if that quantity isn't computable from this flight.
 OUTPUT_EXTRACTORS = {
     # Always-on
-    "Static margin rail exit [c]":   lambda fl, ipt: float(fl.static_margin(fl.out_of_rail_time)),
-    "Rail exit velocity [m/s]":      lambda fl, ipt: float(fl.out_of_rail_velocity),
-    "Apogee AGL [m]":                lambda fl, ipt: float(fl.altitude(fl.apogee_time)),
-
+    "Static margin rail exit [c]": lambda fl, ipt: float(
+        fl.static_margin(fl.out_of_rail_time)
+    ),
+    "Rail exit velocity [m/s]": lambda fl, ipt: float(fl.out_of_rail_velocity),
+    "Apogee AGL [m]": lambda fl, ipt: float(fl.altitude(fl.apogee_time)),
     # Trajectory
-    "Apogee ASL [m]":                lambda fl, ipt: float(fl.apogee),
-    "Max velocity [m/s]":            lambda fl, ipt: float(fl.max_speed),
-    "Max acceleration [m/s^2]":      lambda fl, ipt: float(fl.max_acceleration),
-    "Max Mach [-]":                  lambda fl, ipt: float(fl.max_mach_number),
-    "Time to apogee [s]":            lambda fl, ipt: float(fl.apogee_time),
-    "Total flight time [s]":         lambda fl, ipt: float(fl.t_final),
-
+    "Apogee ASL [m]": lambda fl, ipt: float(fl.apogee),
+    "Max velocity [m/s]": lambda fl, ipt: float(fl.max_speed),
+    "Max acceleration [m/s^2]": lambda fl, ipt: float(fl.max_acceleration),
+    "Max Mach [-]": lambda fl, ipt: float(fl.max_mach_number),
+    "Time to apogee [s]": lambda fl, ipt: float(fl.apogee_time),
+    "Total flight time [s]": lambda fl, ipt: float(fl.t_final),
     # Stability
-    "Static margin liftoff [c]":     lambda fl, ipt: float(fl.static_margin(0)),
-    "Min static margin [c]":         lambda fl, ipt: _min_static_margin(fl),
-
+    "Static margin liftoff [c]": lambda fl, ipt: float(fl.static_margin(0)),
+    "Min static margin [c]": lambda fl, ipt: _min_static_margin(fl),
     # Loads
-    "Max dynamic pressure [Pa]":     lambda fl, ipt: float(fl.max_dynamic_pressure),
-    "Max thrust load [N]":           lambda fl, ipt: _safe_attr(fl, "max_thrust"),
+    "Max dynamic pressure [Pa]": lambda fl, ipt: float(fl.max_dynamic_pressure),
+    "Max thrust load [N]": lambda fl, ipt: _safe_attr(fl, "max_thrust"),
 }
 
 
@@ -145,7 +143,9 @@ def write_flight_outputs(
     wb.save(filepath)
 
     if skipped_no_header:
-        print(f"  [info] {len(skipped_no_header)} output(s) had no matching header in the sheet "
-              f"and were skipped: {skipped_no_header}")
+        print(
+            f"  [info] {len(skipped_no_header)} output(s) had no matching header in the sheet "
+            f"and were skipped: {skipped_no_header}"
+        )
     print(f"  Wrote {len(written)} outputs to row {row} ({config_id})")
     return written

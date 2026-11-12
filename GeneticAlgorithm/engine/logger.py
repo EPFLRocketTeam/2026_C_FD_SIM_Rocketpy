@@ -2,6 +2,7 @@ import csv
 import os
 from datetime import datetime
 
+
 class Logger:
     def __init__(self, param_names, algo="unknown"):
         self.param_names = list(param_names)
@@ -14,22 +15,23 @@ class Logger:
         self.filename = f"backtest_{timestamp}_{self.algo}.csv"
         self.filepath = os.path.join(self.output_dir, self.filename)
 
-        self.file = open(self.filepath, 'w', newline='')
+        self.file = open(self.filepath, "w", newline="")
         self.writer = csv.DictWriter(
             self.file,
-            fieldnames=['gen', 'iter', 'fitness', 'apogee', 'drift', 'sm'] + self.param_names
+            fieldnames=["gen", "iter", "fitness", "apogee", "drift", "sm"]
+            + self.param_names,
         )
         self.writer.writeheader()
         print(f"Logging to {self.filepath}")
 
     def log(self, gen, idx, fitness, metrics, param_dict):
         row = {
-            'gen': gen,
-            'iter': idx,
-            'fitness': fitness,
-            'apogee': metrics['apogee'],
-            'drift': metrics['drift'],
-            'sm': metrics['sm']
+            "gen": gen,
+            "iter": idx,
+            "fitness": fitness,
+            "apogee": metrics["apogee"],
+            "drift": metrics["drift"],
+            "sm": metrics["sm"],
         }
         row.update(param_dict)
         self.writer.writerow(row)

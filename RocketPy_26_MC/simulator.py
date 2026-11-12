@@ -4,7 +4,7 @@ simulator.py
 Refactorisation de simulator.ipynb (version courbe de poussée à 4 phases,
 débits massiques LOX/éthanol distincts par phase, double suivi N2 des COPV
 LOX/éthanol) en une fonction unique réutilisable :
-run_simulation(structure, propellant, parameters, work_dir="."). 
+run_simulation(structure, propellant, parameters, work_dir=".").
 
 La logique physique (bays, moment d'inertie, courbe de poussée, hold-down,
 déplétion, fichiers .eng/.csv, construction RocketPy, Flight) suit le
@@ -15,6 +15,7 @@ script) sans dépendre de l'exécution cellule par cellule.
 thrust_curve_mode et derated_thrust sont maintenant des champs du dataclass
 Propellant (plus besoin de les passer séparément à run_simulation).
 """
+
 from __future__ import annotations
 
 import csv
@@ -140,44 +141,102 @@ def run_simulation(
     # ------------------------------------------------------------------
     # 1. Rocket (bays) + centre de masse + moments d'inertie
     # ------------------------------------------------------------------
-    Boattail = Bay("Boattail", 0, 0, struct.r_rocket, struct.l_bt, struct.m_bt, "cylindrical")
-    EngineBay = Bay(
-        "EngineBay", Boattail.length, 0, struct.r_rocket, struct.l_ebay,
-        struct.m_ebay + struct.m_fins, "tank",
+    Boattail = Bay(
+        "Boattail", 0, 0, struct.r_rocket, struct.l_bt, struct.m_bt, "cylindrical"
     )
-    LOx = Bay("LOx", EngineBay.z + EngineBay.length, 0, struct.r_rocket, struct.l_lox, struct.m_lox, "tank")
+    EngineBay = Bay(
+        "EngineBay",
+        Boattail.length,
+        0,
+        struct.r_rocket,
+        struct.l_ebay,
+        struct.m_ebay + struct.m_fins,
+        "tank",
+    )
+    LOx = Bay(
+        "LOx",
+        EngineBay.z + EngineBay.length,
+        0,
+        struct.r_rocket,
+        struct.l_lox,
+        struct.m_lox,
+        "tank",
+    )
     Aerocover = Bay(
-        "Aerocover", struct.pos_aerocover, struct.r_rocket,
-        struct.r_aerocover, struct.l_aerocover, struct.m_aerocover, "semi-cylindrical",
+        "Aerocover",
+        struct.pos_aerocover,
+        struct.r_rocket,
+        struct.r_aerocover,
+        struct.l_aerocover,
+        struct.m_aerocover,
+        "semi-cylindrical",
     )
     PressurantBay1 = Bay(
-        "PressurantBay1", LOx.z + LOx.length, 0,
-        struct.r_rocket, struct.l_pbay1, struct.m_pbay1, "cylindrical",
+        "PressurantBay1",
+        LOx.z + LOx.length,
+        0,
+        struct.r_rocket,
+        struct.l_pbay1,
+        struct.m_pbay1,
+        "cylindrical",
     )
     ETH = Bay(
-        "ETH", PressurantBay1.z + PressurantBay1.length, 0,
-        struct.r_rocket, struct.l_eth, struct.m_eth, "tank",
+        "ETH",
+        PressurantBay1.z + PressurantBay1.length,
+        0,
+        struct.r_rocket,
+        struct.l_eth,
+        struct.m_eth,
+        "tank",
     )
     PressurantBay2 = Bay(
-        "PressurantBay2", ETH.z + ETH.length, 0,
-        struct.r_rocket, struct.l_pbay2, struct.m_pbay2, "cylindrical",
+        "PressurantBay2",
+        ETH.z + ETH.length,
+        0,
+        struct.r_rocket,
+        struct.l_pbay2,
+        struct.m_pbay2,
+        "cylindrical",
     )
     AVBay = Bay(
-        "AVBay", PressurantBay2.z + PressurantBay2.length, 0,
-        struct.r_rocket, struct.l_avbay, struct.m_avbay, "cylindrical",
+        "AVBay",
+        PressurantBay2.z + PressurantBay2.length,
+        0,
+        struct.r_rocket,
+        struct.l_avbay,
+        struct.m_avbay,
+        "cylindrical",
     )
     RecoveryBay = Bay(
-        "RecoveryBay", AVBay.z + AVBay.length, 0,
-        struct.r_rocket, struct.l_rebay, struct.m_rebay, "cylindrical",
+        "RecoveryBay",
+        AVBay.z + AVBay.length,
+        0,
+        struct.r_rocket,
+        struct.l_rebay,
+        struct.m_rebay,
+        "cylindrical",
     )
     Nosecone = Bay(
-        "Nosecone", RecoveryBay.z + RecoveryBay.length, 0,
-        struct.r_rocket, struct.l_nosecone, struct.m_nosecone, "conical",
+        "Nosecone",
+        RecoveryBay.z + RecoveryBay.length,
+        0,
+        struct.r_rocket,
+        struct.l_nosecone,
+        struct.m_nosecone,
+        "conical",
     )
 
     rocket_bays = [
-        Boattail, EngineBay, LOx, Aerocover, PressurantBay1,
-        ETH, PressurantBay2, AVBay, RecoveryBay, Nosecone,
+        Boattail,
+        EngineBay,
+        LOx,
+        Aerocover,
+        PressurantBay1,
+        ETH,
+        PressurantBay2,
+        AVBay,
+        RecoveryBay,
+        Nosecone,
     ]
 
     # ============================================================
@@ -197,10 +256,9 @@ def run_simulation(
         z_cm /= m_dry
         y_cm /= m_dry
 
-
     elif struct.mode_CoM == 1:
         m_dry = struct.m_dry_measured + sum(bay.mass for bay in rocket_bays)
-        
+
         z_cm = struct.l_center_of_mass * struct.m_dry_measured
         y_cm = 0
 
@@ -215,11 +273,7 @@ def run_simulation(
 
     else:
         m_dry = 0
-        raise ValueError(
-            "Mode of CoM has to be 0 or 1."
-            "Setting dry mass to 0."
-        )
-
+        raise ValueError("Mode of CoM has to be 0 or 1." "Setting dry mass to 0.")
 
     if struct.mode_Inertia == 0:
 
@@ -246,7 +300,9 @@ def run_simulation(
             L_rocket = Nosecone.z + Nosecone.length
 
             # Inertie propre : approximation cylindre homogène
-            Ix_meas = struct.m_dry_measured * (3 * struct.r_rocket**2 + L_rocket**2) / 12
+            Ix_meas = (
+                struct.m_dry_measured * (3 * struct.r_rocket**2 + L_rocket**2) / 12
+            )
             Iy_meas = Ix_meas
             Iz_meas = 0.5 * struct.m_dry_measured * struct.r_rocket**2
 
@@ -270,13 +326,9 @@ def run_simulation(
         Ix = 0
         Iy = 0
         Iz = 0
-        raise ValueError(
-            "Mode of inertia has to be 0 or 1."
-            "Setting Inertia to 0."
-    )
+        raise ValueError("Mode of inertia has to be 0 or 1." "Setting Inertia to 0.")
 
-
-#print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
+    # print(m_dry, Ix, Iy, Iz, z_cm, y_cm)
 
     # ------------------------------------------------------------------
     # 2. Grandeurs de propulsion de référence
@@ -318,7 +370,9 @@ def run_simulation(
         F_ramp_down = F_full_thrust
 
         if F_shutdown > F_ramp_down:
-            raise ValueError("f_shutdown cannot exceed thrust at the start of ramp-down.")
+            raise ValueError(
+                "f_shutdown cannot exceed thrust at the start of ramp-down."
+            )
 
         impulse_ramp_down = 0.5 * (F_ramp_down + F_shutdown) * prop.ramp_down_time
         flat_duration = (
@@ -373,11 +427,15 @@ def run_simulation(
     elif thrust_curve_mode == "peaked":
         peak_duration_factor = 1.5
 
-        F_derating = derated_thrust_in if derated_thrust_in > 0 else 0.85 * F_full_thrust
+        F_derating = (
+            derated_thrust_in if derated_thrust_in > 0 else 0.85 * F_full_thrust
+        )
         if F_derating <= 0 or F_derating > F_full_thrust:
             raise ValueError("derated thrust must be > 0 and <= nominal thrust.")
         if F_shutdown > F_derating:
-            raise ValueError("f_shutdown cannot exceed the derated thrust at the start of ramp-down.")
+            raise ValueError(
+                "f_shutdown cannot exceed the derated thrust at the start of ramp-down."
+            )
 
         t_peak_transition = (peak_duration_factor - 1.0) * prop.ramp_up_time
         t_derate_end = t_rampup_end + t_peak_transition
@@ -386,8 +444,11 @@ def run_simulation(
         impulse_ramp_down = 0.5 * (F_derating + F_shutdown) * prop.ramp_down_time
 
         t_const = (
-            prop.total_impulse - impulse_ramp_up - impulse_transition
-            - impulse_ramp_down - impulse_cutoff
+            prop.total_impulse
+            - impulse_ramp_up
+            - impulse_transition
+            - impulse_ramp_down
+            - impulse_cutoff
         ) / F_derating
         if t_const < 0:
             raise ValueError(
@@ -411,7 +472,10 @@ def run_simulation(
                 u_transition = np.minimum(u, t_peak_transition)
                 I_transition_partial = (
                     F_full_thrust * u_transition
-                    + 0.5 * (F_derating - F_full_thrust) / t_peak_transition * u_transition**2
+                    + 0.5
+                    * (F_derating - F_full_thrust)
+                    / t_peak_transition
+                    * u_transition**2
                 )
                 return np.where(
                     u <= t_peak_transition,
@@ -451,7 +515,9 @@ def run_simulation(
             return np.maximum(F_out, 0.0)
 
     else:
-        raise ValueError(f"Unknown thrust_curve_mode: {thrust_curve_mode!r} (expected 'constant' or 'peaked').")
+        raise ValueError(
+            f"Unknown thrust_curve_mode: {thrust_curve_mode!r} (expected 'constant' or 'peaked')."
+        )
 
     # ------------------------------------------------------------------
     # 4. Vecteur temps maître + courbe de poussée
@@ -514,7 +580,9 @@ def run_simulation(
     # ------------------------------------------------------------------
     # 6. Déplétion exacte du propergol
     # ------------------------------------------------------------------
-    def compute_propellant_depletion(t, rampup_mdot, burn_mdot_full, rampdown_mdot, cutoff_mdot):
+    def compute_propellant_depletion(
+        t, rampup_mdot, burn_mdot_full, rampdown_mdot, cutoff_mdot
+    ):
         t = np.asarray(t, dtype=float)
         dt_rampup = np.clip(t, 0.0, prop.ramp_up_time)
         dt_rampdown = np.clip(t - t_ramp_down, 0.0, prop.ramp_down_time)
@@ -537,10 +605,18 @@ def run_simulation(
         return consumed, mrem, free_mass
 
     consumed_fuel, mrem_fuel, free_fuel_check = compute_propellant_depletion(
-        t_total, prop.eth_ramp_up, eth_burn_mass_flow_rate, prop.eth_ramp_down, prop.eth_cutoff,
+        t_total,
+        prop.eth_ramp_up,
+        eth_burn_mass_flow_rate,
+        prop.eth_ramp_down,
+        prop.eth_cutoff,
     )
     consumed_ox, mrem_ox, free_ox_check = compute_propellant_depletion(
-        t_total, prop.lox_ramp_up, lox_burn_mass_flow_rate, prop.lox_ramp_down, prop.lox_cutoff,
+        t_total,
+        prop.lox_ramp_up,
+        lox_burn_mass_flow_rate,
+        prop.lox_ramp_down,
+        prop.lox_cutoff,
     )
 
     Vrem_fuel = mrem_fuel / prop.m_eth_density
@@ -566,7 +642,9 @@ def run_simulation(
         raise ValueError("Hold-down force denominator is approximately zero.")
 
     W = m_vehicle * G
-    F_HD = (F_eng - W * (np.cos(alpha) - params.coeff_fr_rail * np.sin(alpha))) / denominator
+    F_HD = (
+        F_eng - W * (np.cos(alpha) - params.coeff_fr_rail * np.sin(alpha))
+    ) / denominator
 
     if prop.f_hold_down > 0:
         mask_break = F_HD >= prop.f_hold_down
@@ -690,8 +768,12 @@ def run_simulation(
     # ------------------------------------------------------------------
     # 13. RocketPy : Environment, Motor, Rocket, Flight
     # ------------------------------------------------------------------
-    env = Environment(latitude=params.latitude, longitude=params.longitude, elevation=params.elevation)
-    env.set_date(date=(params.annee, params.mois, params.jour, params.heure, params.minute))
+    env = Environment(
+        latitude=params.latitude, longitude=params.longitude, elevation=params.elevation
+    )
+    env.set_date(
+        date=(params.annee, params.mois, params.jour, params.heure, params.minute)
+    )
 
     if wind_profile is not None and len(wind_profile) > 0:
         wind_u_pairs = []
@@ -705,7 +787,9 @@ def run_simulation(
             f"Custom gusty wind profile ({len(wind_profile)} layers, "
             f"{min(speeds):.1f}–{max(speeds):.1f} m/s)"
         )
-        env.set_atmospheric_model(type="custom_atmosphere", wind_u=wind_u_pairs, wind_v=wind_v_pairs)
+        env.set_atmospheric_model(
+            type="custom_atmosphere", wind_u=wind_u_pairs, wind_v=wind_v_pairs
+        )
     elif wind_speed_override is not None and wind_direction_override_deg is not None:
         theta = math.radians(wind_direction_override_deg)
         wind_u = wind_speed_override * math.cos(theta)
@@ -714,7 +798,9 @@ def run_simulation(
             f"Custom uniform wind ({wind_speed_override:.1f} m/s, "
             f"{wind_direction_override_deg:.0f}°)"
         )
-        env.set_atmospheric_model(type="custom_atmosphere", wind_u=wind_u, wind_v=wind_v)
+        env.set_atmospheric_model(
+            type="custom_atmosphere", wind_u=wind_u, wind_v=wind_v
+        )
     else:
         atmospheric_model_used = "ECMWF (Windy)"
         try:
@@ -728,12 +814,18 @@ def run_simulation(
                 env.set_atmospheric_model(type="standard_atmosphere")
 
     lox_tank_ullage = Function(
-        str(lox_csv_path), interpolation="linear", extrapolation="constant",
-        inputs="Time (s)", outputs="Ullage Volume (m^3)",
+        str(lox_csv_path),
+        interpolation="linear",
+        extrapolation="constant",
+        inputs="Time (s)",
+        outputs="Ullage Volume (m^3)",
     )
     ethanol_tank_ullage = Function(
-        str(ethanol_csv_path), interpolation="linear", extrapolation="constant",
-        inputs="Time (s)", outputs="Ullage Volume (m^3)",
+        str(ethanol_csv_path),
+        interpolation="linear",
+        extrapolation="constant",
+        inputs="Time (s)",
+        outputs="Ullage Volume (m^3)",
     )
 
     lox = Fluid(name="Lox", density=prop.m_lox_density)
@@ -742,32 +834,64 @@ def run_simulation(
     pressurizing_gas_ethanol = Fluid(name="N2", density=rho_n2_ethanol_tank)
     pressurizing_gas = Fluid(name="N2", density=600)
 
-    tank_height = compute_tank_height(struct.tank_volume, struct.r_int, struct.tank_spherical_caps)
-    tank_geometry_lox = CylindricalTank(struct.r_int, tank_height, spherical_caps=struct.tank_spherical_caps)
-    tank_geometry_ethanol = CylindricalTank(struct.r_int, tank_height, spherical_caps=struct.tank_spherical_caps)
+    tank_height = compute_tank_height(
+        struct.tank_volume, struct.r_int, struct.tank_spherical_caps
+    )
+    tank_geometry_lox = CylindricalTank(
+        struct.r_int, tank_height, spherical_caps=struct.tank_spherical_caps
+    )
+    tank_geometry_ethanol = CylindricalTank(
+        struct.r_int, tank_height, spherical_caps=struct.tank_spherical_caps
+    )
 
     lox_tank = UllageBasedTank(
-        name="LOX Tank", flux_time=t_end, geometry=tank_geometry_lox,
-        gas=pressurizing_gas_lox, liquid=lox, ullage=lox_tank_ullage,
+        name="LOX Tank",
+        flux_time=t_end,
+        geometry=tank_geometry_lox,
+        gas=pressurizing_gas_lox,
+        liquid=lox,
+        ullage=lox_tank_ullage,
     )
     ethanol_tank = UllageBasedTank(
-        name="Ethanol Tank", flux_time=t_end, geometry=tank_geometry_ethanol,
-        gas=pressurizing_gas_ethanol, liquid=ethanol, ullage=ethanol_tank_ullage,
+        name="Ethanol Tank",
+        flux_time=t_end,
+        geometry=tank_geometry_ethanol,
+        gas=pressurizing_gas_ethanol,
+        liquid=ethanol,
+        ullage=ethanol_tank_ullage,
     )
 
-    copv_height = compute_tank_height(struct.copv_volume, struct.r_int_copv, struct.copv_spherical_caps)
-    pressure_tank_geometry = CylindricalTank(struct.r_int_copv, copv_height, spherical_caps=struct.copv_spherical_caps)
+    copv_height = compute_tank_height(
+        struct.copv_volume, struct.r_int_copv, struct.copv_spherical_caps
+    )
+    pressure_tank_geometry = CylindricalTank(
+        struct.r_int_copv, copv_height, spherical_caps=struct.copv_spherical_caps
+    )
 
-    copv_lox_mass = Function(str(copv_lox_csv_path), interpolation="linear", extrapolation="constant")
-    copv_eth_mass = Function(str(copv_eth_csv_path), interpolation="linear", extrapolation="constant")
+    copv_lox_mass = Function(
+        str(copv_lox_csv_path), interpolation="linear", extrapolation="constant"
+    )
+    copv_eth_mass = Function(
+        str(copv_eth_csv_path), interpolation="linear", extrapolation="constant"
+    )
 
     pressure_tank_lox = MassBasedTank(
-        name="LOX Pressure Tank", geometry=pressure_tank_geometry, liquid_mass=0,
-        flux_time=t_end, gas_mass=copv_lox_mass, gas=pressurizing_gas, liquid=pressurizing_gas,
+        name="LOX Pressure Tank",
+        geometry=pressure_tank_geometry,
+        liquid_mass=0,
+        flux_time=t_end,
+        gas_mass=copv_lox_mass,
+        gas=pressurizing_gas,
+        liquid=pressurizing_gas,
     )
     pressure_tank_eth = MassBasedTank(
-        name="Ethanol Pressure Tank", geometry=pressure_tank_geometry, liquid_mass=0,
-        flux_time=t_end, gas_mass=copv_eth_mass, gas=pressurizing_gas, liquid=pressurizing_gas,
+        name="Ethanol Pressure Tank",
+        geometry=pressure_tank_geometry,
+        liquid_mass=0,
+        flux_time=t_end,
+        gas_mass=copv_eth_mass,
+        gas=pressurizing_gas,
+        liquid=pressurizing_gas,
     )
 
     B3 = LiquidMotor(
@@ -791,7 +915,9 @@ def run_simulation(
 
     expected_fluid_mass_release = m_vehicle[idx_break] - m_dry
     rocketpy_fluid_mass_release = B3.propellant_mass(0)
-    if not np.isclose(rocketpy_fluid_mass_release, expected_fluid_mass_release, atol=1e-4, rtol=1e-6):
+    if not np.isclose(
+        rocketpy_fluid_mass_release, expected_fluid_mass_release, atol=1e-4, rtol=1e-6
+    ):
         raise RuntimeError(
             "RocketPy fluid inventory does not match wrapper fluid inventory "
             "at hold-down release."
@@ -814,7 +940,9 @@ def run_simulation(
         upper_button_position=struct.pos_sup_rb,
     )
     firehorn2.add_nose(
-        length=struct.l_nosecone, kind="powerseries", power=0.5,
+        length=struct.l_nosecone,
+        kind="powerseries",
+        power=0.5,
         position=Nosecone.z + struct.l_nosecone,
     )
     firehorn2.add_trapezoidal_fins(
@@ -833,12 +961,20 @@ def run_simulation(
         position=Boattail.length,
     )
     firehorn2.add_parachute(
-        name="reefed", cd_s=struct.drag_coeff_para_reefed,
-        trigger="apogee", sampling_rate=100, lag=7, noise=(0, 0, 0),
+        name="reefed",
+        cd_s=struct.drag_coeff_para_reefed,
+        trigger="apogee",
+        sampling_rate=100,
+        lag=7,
+        noise=(0, 0, 0),
     )
     firehorn2.add_parachute(
-        name="unreefed", cd_s=struct.drag_coeff_para_unreefed,
-        trigger=struct.trig_alt_para, sampling_rate=100, lag=0, noise=(0, 0, 0),
+        name="unreefed",
+        cd_s=struct.drag_coeff_para_unreefed,
+        trigger=struct.trig_alt_para,
+        sampling_rate=100,
+        lag=0,
+        noise=(0, 0, 0),
     )
 
     rocket_drawing_path = None
@@ -881,13 +1017,15 @@ def run_simulation(
     parachute_events = []
     for trigger_time, parachute in flight.parachute_events:
         open_time = trigger_time + parachute.lag
-        parachute_events.append({
-            "name": parachute.name.title(),
-            "time": float(open_time),
-            "altitude": float(flight.altitude(open_time)),
-            "latitude": float(flight.latitude(open_time)),
-            "longitude": float(flight.longitude(open_time)),
-        })
+        parachute_events.append(
+            {
+                "name": parachute.name.title(),
+                "time": float(open_time),
+                "altitude": float(flight.altitude(open_time)),
+                "latitude": float(flight.latitude(open_time)),
+                "longitude": float(flight.longitude(open_time)),
+            }
+        )
 
     # ------------------------------------------------------------------
     # 15. save_files : nettoyage si désactivé
@@ -915,7 +1053,12 @@ def run_simulation(
         "dry_mass": float(m_dry),
         "wet_mass": float(m_wet),
         "nominal_total_impulse": float(nominal_total_impulse),
-        "trajectory": {"time": t_plot, "altitude": altitude, "x": local_x, "y": local_y},
+        "trajectory": {
+            "time": t_plot,
+            "altitude": altitude,
+            "x": local_x,
+            "y": local_y,
+        },
         "velocity": {"time": t_plot, "speed": speed},
         "acceleration": {"time": t_plot, "accel": acceleration},
         "static_margin": {"time": t_plot, "margin": static_margin},

@@ -2,6 +2,7 @@ import random
 import numpy as np
 from optimizer import OptimizerBase
 
+
 class Algorithm(OptimizerBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -48,7 +49,7 @@ class Algorithm(OptimizerBase):
         n = len(self.population)
         if n == 0:
             return self._random_design()
-        if self.selection_method == 'rank':
+        if self.selection_method == "rank":
             sorted_idx = sorted(range(n), key=lambda i: self.fitnesses[i], reverse=True)
             probs = []
             for rank_i, idx in enumerate(sorted_idx):
@@ -57,12 +58,14 @@ class Algorithm(OptimizerBase):
                 probs.append(prob)
             chosen = self.rng.choices(range(n), weights=probs, k=1)[0]
             return self.population[chosen]
-        elif self.selection_method == 'boltzmann':
+        elif self.selection_method == "boltzmann":
             t0 = 5.0
             decay = 0.95
             temperature = t0 * (decay ** (self.generation - 1))
             max_fit = max(self.fitnesses) if self.fitnesses else 1.0
-            norm_fit = np.array(self.fitnesses) / max_fit if max_fit > 0 else np.zeros(n)
+            norm_fit = (
+                np.array(self.fitnesses) / max_fit if max_fit > 0 else np.zeros(n)
+            )
             exp_fit = np.exp(norm_fit / max(temperature, 1e-6))
             probs = exp_fit / (np.sum(exp_fit) + 1e-12)
             chosen = self.rng.choices(range(n), weights=probs, k=1)[0]

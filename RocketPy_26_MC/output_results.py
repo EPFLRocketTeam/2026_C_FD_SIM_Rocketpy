@@ -5,6 +5,7 @@ output_results.py
 (Structure, Propellant, Parameters, Simulation), pour reproduire la logique
 des 4 feuilles de l'Excel d'origine tout en restant en CSV.
 """
+
 from __future__ import annotations
 
 import csv
@@ -102,7 +103,9 @@ def write_flight_outputs_csv(
     return filepath
 
 
-def write_all_outputs(structure, propellant, parameters, flight, version: str, directory: str | Path = ".") -> dict[str, Path]:
+def write_all_outputs(
+    structure, propellant, parameters, flight, version: str, directory: str | Path = "."
+) -> dict[str, Path]:
     """Écrit les 4 fichiers CSV (Structure, Propellant, Parameters, Simulation),
     reproduisant les 4 feuilles de l'Excel d'origine. Retourne un dict des
     chemins créés."""

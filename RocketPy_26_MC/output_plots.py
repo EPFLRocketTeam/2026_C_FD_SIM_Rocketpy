@@ -4,11 +4,13 @@ output_plots.py
 Génère des graphes PNG à partir du dict de résultats produit par
 simulator.run_simulation(). Utilisé par la fenêtre d'export de app.py.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")  # pas d'affichage interactif, juste sauvegarde fichier
 import matplotlib.pyplot as plt
 
@@ -41,7 +43,9 @@ def plot_stability_margin(result: dict, directory: str | Path) -> Path:
     fig, ax = plt.subplots(figsize=(9, 5))
     ax.plot(data["time"], data["margin"], color="firebrick")
     ax.axhline(0, color="black", linewidth=0.8, linestyle="--")
-    ax.axvline(result["out_of_rail_time"], color="gray", linestyle=":", label="Rail exit")
+    ax.axvline(
+        result["out_of_rail_time"], color="gray", linestyle=":", label="Rail exit"
+    )
     ax.axvline(result["time_to_apogee"], color="gray", linestyle="-.", label="Apogee")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Static margin (calibers)")

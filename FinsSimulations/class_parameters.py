@@ -5,13 +5,14 @@ Every field has a default value. Section header rows (no numeric or string
 value in column B) are automatically skipped.
 String fields (version, save_files, write_to_file) are handled separately.
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, fields
 from pathlib import Path
 from openpyxl import load_workbook
 
-SHEET_NAME   = "Parameters "   # note: trailing space in the Excel sheet name
-NAME_COLUMN  = "A"
+SHEET_NAME = "Parameters "  # note: trailing space in the Excel sheet name
+NAME_COLUMN = "A"
 VALUE_COLUMN = "B"
 FIRST_DATA_ROW = 2
 
@@ -19,37 +20,37 @@ FIRST_DATA_ROW = 2
 @dataclass
 class Parameters:
     # ENREGISTREMENT
-    version:       str   = "TEMPLATE"
-    save_files:    bool  = True
-    n_points:      int   = 1000
-    write_to_file: bool  = False
+    version: str = "TEMPLATE"
+    save_files: bool = True
+    n_points: int = 1000
+    write_to_file: bool = False
 
     # SORTIES SOUHAITÉES (n'a d'effet que si write_to_file=True)
-    output_general:         bool = True   # résultats généraux (dans la feuille Excel Simulation)
-    output_euler_angles:    bool = False  # euler_angles.png
-    output_stability:       bool = False  # stability_margin.png
-    output_trajectory:      bool = False  # trajectory.png
-    output_velocity:        bool = False  # velocity.png
-    output_acceleration:    bool = False  # acceleration.png
-    output_thrust_curve:    bool = False  # thrust_curve.png
+    output_general: bool = True  # résultats généraux (dans la feuille Excel Simulation)
+    output_euler_angles: bool = False  # euler_angles.png
+    output_stability: bool = False  # stability_margin.png
+    output_trajectory: bool = False  # trajectory.png
+    output_velocity: bool = False  # velocity.png
+    output_acceleration: bool = False  # acceleration.png
+    output_thrust_curve: bool = False  # thrust_curve.png
 
     # ENVIRONNEMENT
-    annee:     int   = 2026
-    mois:      int   = 6
-    jour:      int   = 2
-    heure:     int   = 12
-    minute:    int   = 0
-    latitude:  float = 39.390150   # EuRoC
-    longitude: float = -8.289145   # EuRoC
+    annee: int = 2026
+    mois: int = 6
+    jour: int = 2
+    heure: int = 12
+    minute: int = 0
+    latitude: float = 39.390150  # EuRoC
+    longitude: float = -8.289145  # EuRoC
     elevation: float = 130.0
 
     # RAIL
-    alpha_rail:      float = 6.0
-    beta_rail:       float = 6.0
-    l_rail:          float = 11.65
-    coeff_fr_rail:   float = 0.5
+    alpha_rail: float = 6.0
+    beta_rail: float = 6.0
+    l_rail: float = 11.65
+    coeff_fr_rail: float = 0.5
     inclination_rail: float = 84.0
-    heading_rail:    float = 144.0
+    heading_rail: float = 144.0
 
 
 def _try_to_float(value) -> float | None:
@@ -96,7 +97,7 @@ def read_parameters(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Param
             )
 
     ws = wb[sheet_name]
-    name_col_idx  = ord(NAME_COLUMN)  - ord("A") + 1
+    name_col_idx = ord(NAME_COLUMN) - ord("A") + 1
     value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1
 
     # Field type map for casting

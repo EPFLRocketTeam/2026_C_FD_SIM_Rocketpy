@@ -5,22 +5,23 @@ from rocketpy import Environment, SolidMotor, Rocket, Flight
 import datetime
 
 GENE_BOUNDS = {
-    'dry_mass': (40.0, 100.0),       # kg (motorless)
-    'fin_span': (0.1, 0.4),          # m
-    'fin_root_chord': (0.3, 0.8),    # m
-    'propellant_mass': (10.0, 50.0), # kg
-    'burn_time': (3.0, 8.0)          # s
+    "dry_mass": (40.0, 100.0),  # kg (motorless)
+    "fin_span": (0.1, 0.4),  # m
+    "fin_root_chord": (0.3, 0.8),  # m
+    "propellant_mass": (10.0, 50.0),  # kg
+    "burn_time": (3.0, 8.0),  # s
 }
 
-TARGET_APOGEE = 3000.0 # m
+TARGET_APOGEE = 3000.0  # m
 # tryout real time weather
-#now = datetime.datetime.now(datetime.timezone.utc)
-#env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160, date=(now.year, now.month, now.day, now.hour))
-#env.set_atmospheric_model(type="forecast", file="GFS")
-#env.info()
+# now = datetime.datetime.now(datetime.timezone.utc)
+# env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160, date=(now.year, now.month, now.day, now.hour))
+# env.set_atmospheric_model(type="forecast", file="GFS")
+# env.info()
 # std atmosphere -> too simple
 env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160)
 env.set_atmospheric_model(type="standard_atmosphere")
+
 
 class DNA:
     def __init__(self, genes=None):
@@ -30,7 +31,7 @@ class DNA:
             self.genes = {}
             for key, (min_val, max_val) in GENE_BOUNDS.items():
                 self.genes[key] = random.uniform(min_val, max_val)
-                
+
     def crossover(self, partner):
         new_genes = {}
         for key in self.genes.keys():
@@ -46,6 +47,7 @@ class DNA:
                 self.genes[key] += noise
                 self.genes[key] = max(min_val, min(max_val, self.genes[key]))
 
+
 class RocketPhenotype:
     def __init__(self, dna):
         self.dna = dna
@@ -56,11 +58,12 @@ class RocketPhenotype:
 
     def evaluate(self):
         genes = self.dna.genes
-        
+
         try:
             # solid, must become liquid
             motor = SolidMotor(
-                thrust_source=lambda t: (genes['propellant_mass'] * 2000) / genes['burn_time'],
+                thrust_source=lambda t: (genes["propellant_mass"] * 2000)
+                / genes["burn_time"],
                 dry_mass=5.0,
                 dry_inertia=(0.1, 0.1, 0.01),
                 nozzle_radius=0.05,
@@ -73,14 +76,14 @@ class RocketPhenotype:
                 grains_center_of_mass_position=0.5,
                 center_of_dry_mass_position=0.5,
                 nozzle_position=0,
-                burn_time=genes['burn_time'],
+                burn_time=genes["burn_time"],
                 coordinate_system_orientation="nozzle_to_combustion_chamber",
             )
 
             # rocket, bad dimensions & positioning
             rocket = Rocket(
                 radius=0.1215,
-                mass=genes['dry_mass'],
+                mass=genes["dry_mass"],
                 inertia=(100.0, 100.0, 1.0, 0, 0, 0),
                 power_off_drag=0.38,
                 power_on_drag=0.38,
@@ -91,11 +94,11 @@ class RocketPhenotype:
             rocket.set_rail_buttons(0.3, 0.8)
             rocket.add_nose(length=1.0, kind="powerseries", power=0.5, position=3.0)
             rocket.add_trapezoidal_fins(
-                n=4, 
-                span=genes['fin_span'], 
-                root_chord=genes['fin_root_chord'], 
-                tip_chord=0.1, 
-                position=0.5
+                n=4,
+                span=genes["fin_span"],
+                root_chord=genes["fin_root_chord"],
+                tip_chord=0.1,
+                position=0.5,
             )
 
             # check stability (static margin)
@@ -106,26 +109,29 @@ class RocketPhenotype:
                 return
 
             flight = Flight(
-                rocket=rocket, 
-                environment=env, 
-                rail_length=5.2, 
+                rocket=rocket,
+                environment=env,
+                rail_length=5.2,
                 inclination=85,
                 heading=0,
-                terminate_on_apogee=True 
+                terminate_on_apogee=True,
             )
 
             # fitness
             self.apogee = flight.apogee
-            self.drift = np.sqrt(flight.x(flight.apogee_time)**2 + flight.y(flight.apogee_time)**2)
+            self.drift = np.sqrt(
+                flight.x(flight.apogee_time) ** 2 + flight.y(flight.apogee_time) ** 2
+            )
 
             # z drift
             z_error = abs(self.apogee - TARGET_APOGEE)
-            
+
             self.fitness = 10000.0 / (1.0 + z_error + (self.drift * 0.5))
 
         except Exception as e:
             self.fitness = 0.0001
             self.is_stable = False
+
 
 class Population:
     def __init__(self, pop_size):
@@ -144,21 +150,21 @@ class Population:
 
     def evolve(self):
         new_rockets = []
-        
+
         best_rocket = self.rockets[0]
         new_rockets.append(RocketPhenotype(copy.deepcopy(best_rocket.dna)))
 
         while len(new_rockets) < self.pop_size:
             parent_a = self.select_parent().dna
             parent_b = self.select_parent().dna
-            
+
             child_dna = parent_a.crossover(parent_b)
             # reduce mutation over time
             mutation_strength = max(0.01, 0.2 / self.generation)
             child_dna.mutate(mutation_rate=0.2, mutation_strength=mutation_strength)
-            
+
             new_rockets.append(RocketPhenotype(child_dna))
-            
+
         self.rockets = new_rockets
         self.generation += 1
 
@@ -173,26 +179,31 @@ if __name__ == "__main__":
     for gen in range(1, GENERATIONS + 1):
         pop.evaluate_all()
         best = pop.rockets[0]
-        
+
         print(f"\n--- Generation {gen} ---")
         print(f"Best fitness: {best.fitness:.2f}")
-        print(f"Apogee:       {best.apogee:.2f} m (Error: {abs(best.apogee-TARGET_APOGEE):.2f} m)")
+        print(
+            f"Apogee:       {best.apogee:.2f} m (Error: {abs(best.apogee-TARGET_APOGEE):.2f} m)"
+        )
         print(f"Drift:        {best.drift:.2f} m")
-        print(f"Rocket Mass:  {best.dna.genes['dry_mass']:.2f} kg | Propellant: {best.dna.genes['propellant_mass']:.2f} kg")
+        print(
+            f"Rocket Mass:  {best.dna.genes['dry_mass']:.2f} kg | Propellant: {best.dna.genes['propellant_mass']:.2f} kg"
+        )
         print(f"Fin Span:     {best.dna.genes['fin_span']:.3f} m")
-        
+
         if gen < GENERATIONS:
             pop.evolve()
 
     print("\nOptimization Complete.")
-    print("\n" + "="*40)
+    print("\n" + "=" * 40)
     print("FINAL WINNER VISUALIZATION")
-    print("="*40)
+    print("=" * 40)
 
     best_genes = pop.rockets[0].dna.genes
 
     best_motor = SolidMotor(
-        thrust_source=lambda t: (best_genes['propellant_mass'] * 2000) / best_genes['burn_time'],
+        thrust_source=lambda t: (best_genes["propellant_mass"] * 2000)
+        / best_genes["burn_time"],
         dry_mass=5.0,
         dry_inertia=(0.1, 0.1, 0.01),
         nozzle_radius=0.05,
@@ -205,13 +216,13 @@ if __name__ == "__main__":
         grains_center_of_mass_position=0.5,
         center_of_dry_mass_position=0.5,
         nozzle_position=0,
-        burn_time=best_genes['burn_time'],
+        burn_time=best_genes["burn_time"],
         coordinate_system_orientation="nozzle_to_combustion_chamber",
     )
 
     best_rocket = Rocket(
         radius=0.1215,
-        mass=best_genes['dry_mass'],
+        mass=best_genes["dry_mass"],
         inertia=(100.0, 100.0, 1.0, 0, 0, 0),
         power_off_drag=0.38,
         power_on_drag=0.38,
@@ -222,20 +233,20 @@ if __name__ == "__main__":
     best_rocket.set_rail_buttons(0.3, 0.8)
     best_rocket.add_nose(length=1.0, kind="powerseries", power=0.5, position=3.0)
     best_rocket.add_trapezoidal_fins(
-        n=4, 
-        span=best_genes['fin_span'], 
-        root_chord=best_genes['fin_root_chord'], 
-        tip_chord=0.1, 
-        position=0.5
+        n=4,
+        span=best_genes["fin_span"],
+        root_chord=best_genes["fin_root_chord"],
+        tip_chord=0.1,
+        position=0.5,
     )
 
     best_flight = Flight(
-        rocket=best_rocket, 
-        environment=env, 
-        rail_length=5.2, 
-        inclination=85, 
+        rocket=best_rocket,
+        environment=env,
+        rail_length=5.2,
+        inclination=85,
         heading=0,
-        terminate_on_apogee=False 
+        terminate_on_apogee=False,
     )
 
     best_rocket.draw()

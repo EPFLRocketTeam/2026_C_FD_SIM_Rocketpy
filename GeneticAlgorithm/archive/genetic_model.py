@@ -6,34 +6,40 @@ import datetime
 from rocket_builder import RocketBuilder
 
 VARIABLE_GENE_BOUNDS = {
-    'fin_span': (0.01, 1.5),          # m
-    'fin_root_chord': (0.1, 1.0),    # m
-    'fuel_mass': (3.0, 12.0),
-    'oxidizer_mass': (3.0, 16.0),
-    'fin_tip_chord': (0.05, 0.3),    # m
-    'fin_sweep_length': (0.3, 0.8),  # m
-    'tail_top_radius': (0.09, 0.20),     # m
-    'tail_bottom_radius': (0.05, 0.12),  # m
-    'nose_length': (0.8, 1.3),           # m
-    'tail_length': (0.3, 0.6),           # m
-    'fin_count': (3, 6),
+    "fin_span": (0.01, 1.5),  # m
+    "fin_root_chord": (0.1, 1.0),  # m
+    "fuel_mass": (3.0, 12.0),
+    "oxidizer_mass": (3.0, 16.0),
+    "fin_tip_chord": (0.05, 0.3),  # m
+    "fin_sweep_length": (0.3, 0.8),  # m
+    "tail_top_radius": (0.09, 0.20),  # m
+    "tail_bottom_radius": (0.05, 0.12),  # m
+    "nose_length": (0.8, 1.3),  # m
+    "tail_length": (0.3, 0.6),  # m
+    "fin_count": (3, 6),
 }
 
 FIXED_GENES = {
-    'motor_type': 'liquid',
+    "motor_type": "liquid",
 }
 
-INTEGER_GENES = ['fin_count']
+INTEGER_GENES = ["fin_count"]
 
-TARGET_APOGEE = 3000.0 # m
-HEIGHT_DEVIATION_ALLOWED = 200.0 # m
+TARGET_APOGEE = 3000.0  # m
+HEIGHT_DEVIATION_ALLOWED = 200.0  # m
 
 now = datetime.datetime.now(datetime.timezone.utc)
-env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160, date=(now.year, now.month, now.day, now.hour))
+env = Environment(
+    latitude=38.9627778,
+    longitude=-8.96277777,
+    elevation=160,
+    date=(now.year, now.month, now.day, now.hour),
+)
 env.set_atmospheric_model(type="forecast", file="GFS")
 
 # env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160)
 # env.set_atmospheric_model(type="standard_atmosphere")
+
 
 class DNA:
     def __init__(self, genes=None):
@@ -72,6 +78,7 @@ class DNA:
                     self.genes[key] += noise
                     self.genes[key] = max(min_val, min(max_val, self.genes[key]))
 
+
 class RocketPhenotype:
     def __init__(self, dna):
         self.dna = dna
@@ -101,7 +108,7 @@ class RocketPhenotype:
                 rail_length=11.65,
                 inclination=85,
                 heading=144,
-                terminate_on_apogee=True
+                terminate_on_apogee=True,
             )
 
             self.apogee = flight.apogee
@@ -111,7 +118,6 @@ class RocketPhenotype:
             self.drift_x = x_ap
             self.drift_y = y_ap
             self.drift = np.sqrt(x_ap**2 + y_ap**2)
-
 
             z_error = abs(self.apogee - TARGET_APOGEE)
             self.fitness = 10000.0 / (1.0 + z_error + (self.drift * 0.1))
@@ -123,12 +129,13 @@ class RocketPhenotype:
                 sm_penalty = 1.5 - self.sm
             elif self.sm > 2.0:
                 sm_penalty = self.sm - 2.0
-            
-            self.fitness /= (1.0 + sm_penalty * 5.0)
+
+            self.fitness /= 1.0 + sm_penalty * 5.0
 
         except Exception as e:
-            self.fitness = 1e-5/(1+random.random())
+            self.fitness = 1e-5 / (1 + random.random())
             print(e)
+
 
 class EvolutionPrinter:
     def __init__(self, variable_bounds, fixed_genes, target_apogee):
@@ -150,19 +157,22 @@ class EvolutionPrinter:
 
         print(f"\n--- Generation {generation} ---")
         print(f"Best fitness:    {best_rocket.fitness:.2f}")
-        print(f"Apogee:          {best_rocket.apogee:.2f} m (Error: {apogee_error:.2f} m)")
+        print(
+            f"Apogee:          {best_rocket.apogee:.2f} m (Error: {apogee_error:.2f} m)"
+        )
         print(f"Drift (total):   {best_rocket.drift:.2f} m")
         print(f"Stability Margin:   {best_rocket.sm:.2f}")
 
-        if hasattr(best_rocket, 'drift_x') and hasattr(best_rocket, 'drift_y'):
+        if hasattr(best_rocket, "drift_x") and hasattr(best_rocket, "drift_y"):
             print(f"  - X drift:    {best_rocket.drift_x:.2f} m")
             print(f"  - Y drift:    {best_rocket.drift_y:.2f} m")
 
         print("\nOptimized parameters:")
         for key in self.variable_bounds.keys():
             value = best_rocket.dna.genes[key]
-            display_name = key.replace('_', ' ').capitalize()
+            display_name = key.replace("_", " ").capitalize()
             print(f"  {display_name:20} {value:8.3f}")
+
 
 class Population:
     def __init__(self, pop_size):
@@ -219,20 +229,22 @@ class Population:
         chosen_idx = np.random.choice(len(self.rockets), p=probs)
         return self.rockets[chosen_idx].dna
 
-    def evolve(self, selection_method='rank', sp=1.5):
+    def evolve(self, selection_method="rank", sp=1.5):
         new_rockets = []
         new_rockets.append(RocketPhenotype(copy.deepcopy(self.rockets[0].dna)))
 
-        if selection_method == 'rank':
+        if selection_method == "rank":
             select_func = lambda: self.rank_select_parent(sp=sp)
-        elif selection_method == 'boltzmann':
+        elif selection_method == "boltzmann":
             select_func = lambda: self.boltzmann_select_parent()
         else:
+
             def tournament():
                 print("!!!FALLING TO NORMAL TOURNAMENT NOT GOOD!!!")
                 tournament_size = 3
                 tournament = random.sample(self.rockets, tournament_size)
                 return max(tournament, key=lambda r: r.fitness).dna
+
             select_func = tournament
 
         while len(new_rockets) < self.pop_size:
@@ -242,12 +254,15 @@ class Population:
 
             mutation_strength = max(0.02, 0.25 / np.sqrt(self.generation))
             mutation_rate = max(0.05, 0.25 * (0.9 ** (self.generation - 1)))
-            child_dna.mutate(mutation_rate=mutation_rate, mutation_strength=mutation_strength)
+            child_dna.mutate(
+                mutation_rate=mutation_rate, mutation_strength=mutation_strength
+            )
 
             new_rockets.append(RocketPhenotype(child_dna))
 
         self.rockets = new_rockets
         self.generation += 1
+
 
 if __name__ == "__main__":
     POPULATION_SIZE = 30
@@ -277,7 +292,7 @@ if __name__ == "__main__":
         rail_length=11.65,
         inclination=85,
         heading=144,
-        terminate_on_apogee=True
+        terminate_on_apogee=True,
     )
     best_builder.show()
     best_flight.plots.trajectory_3d()

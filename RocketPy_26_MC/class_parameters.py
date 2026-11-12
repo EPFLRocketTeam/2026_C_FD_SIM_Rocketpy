@@ -11,13 +11,14 @@ what actually gets exported is driven by the sidebar checkboxes in app.py,
 not by these flags — they are kept here only so an Excel file shared with
 the base code round-trips cleanly.
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, fields
 from pathlib import Path
 from openpyxl import load_workbook
 
-SHEET_NAME   = "Parameters "   # note: trailing space in the Excel sheet name
-NAME_COLUMN  = "A"
+SHEET_NAME = "Parameters "  # note: trailing space in the Excel sheet name
+NAME_COLUMN = "A"
 VALUE_COLUMN = "B"
 FIRST_DATA_ROW = 2
 
@@ -25,37 +26,37 @@ FIRST_DATA_ROW = 2
 @dataclass
 class Parameters:
     # ENREGISTREMENT
-    version:       str   = "TEMPLATE"
-    save_files:    bool  = True
-    n_points:      int   = 1000
-    write_to_file: bool  = False
+    version: str = "TEMPLATE"
+    save_files: bool = True
+    n_points: int = 1000
+    write_to_file: bool = False
 
     # SORTIES SOUHAITÉES (n'a d'effet que si write_to_file=True) — cf. note ci-dessus
-    output_general:         bool = True
-    output_euler_angles:    bool = False
-    output_stability:       bool = False
-    output_trajectory:      bool = False
-    output_velocity:        bool = False
-    output_acceleration:    bool = False
-    output_thrust_curve:    bool = False
+    output_general: bool = True
+    output_euler_angles: bool = False
+    output_stability: bool = False
+    output_trajectory: bool = False
+    output_velocity: bool = False
+    output_acceleration: bool = False
+    output_thrust_curve: bool = False
 
     # ENVIRONNEMENT
-    annee:     int   = 2026
-    mois:      int   = 6
-    jour:      int   = 2
-    heure:     int   = 12
-    minute:    int   = 0
-    latitude:  float = 39.390150   # EuRoC
-    longitude: float = -8.289145   # EuRoC
+    annee: int = 2026
+    mois: int = 6
+    jour: int = 2
+    heure: int = 12
+    minute: int = 0
+    latitude: float = 39.390150  # EuRoC
+    longitude: float = -8.289145  # EuRoC
     elevation: float = 130.0
 
     # RAIL
-    alpha_rail:      float = 6.0
-    beta_rail:       float = 6.0
-    l_rail:          float = 11.65
-    coeff_fr_rail:   float = 0.5
+    alpha_rail: float = 6.0
+    beta_rail: float = 6.0
+    l_rail: float = 11.65
+    coeff_fr_rail: float = 0.5
     inclination_rail: float = 84.0
-    heading_rail:    float = 144.0
+    heading_rail: float = 144.0
 
 
 def _try_to_float(value) -> float | None:
@@ -102,7 +103,7 @@ def read_parameters(filepath: str | Path, sheet_name: str = SHEET_NAME) -> Param
             )
 
     ws = wb[sheet_name]
-    name_col_idx  = ord(NAME_COLUMN)  - ord("A") + 1
+    name_col_idx = ord(NAME_COLUMN) - ord("A") + 1
     value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1
 
     # Field type map for casting

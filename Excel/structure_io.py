@@ -18,7 +18,6 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-
 SHEET_NAME = "Structure"
 NAME_COLUMN = "A"
 VALUE_COLUMN = "B"
@@ -27,28 +26,32 @@ FIRST_DATA_ROW = 2  # rows above are just aesthetic
 
 @dataclass
 class Structure:
-    #TODO: r_int and h_cyl ??? 
+    # TODO: r_int and h_cyl ???
 
     # Pressure tank (COPV)
-    pressure_tank_radius: float = 0.0885   # = 0.177 / 2
+    pressure_tank_radius: float = 0.0885  # = 0.177 / 2
     pressure_tank_height: float = 0.570
 
     # Engine
-    nozzle_radius: float = 0.04946         # = 0.09892 / 2
+    nozzle_radius: float = 0.04946  # = 0.09892 / 2
 
     # Tank positions along the rocket axis [m from rocket base]
-    lox_tank_position: float = 1.3375      # = 0.41755 + 0.756 + 0.388/2
-    copv_1_position: float = 2.17655       # = 0.41755 + 0.756 + 0.388 + 0.900 - 0.570/2
-    ethanol_tank_position: float = 2.66155 # = 0.41755 + 0.756 + 0.388 + 0.900 + 0.388/2
-    copv_2_position: float = 3.50055       # = 0.41755 + 0.756 + 0.388 + 0.900 + 0.388 + 0.900 - 0.570/2
+    lox_tank_position: float = 1.3375  # = 0.41755 + 0.756 + 0.388/2
+    copv_1_position: float = 2.17655  # = 0.41755 + 0.756 + 0.388 + 0.900 - 0.570/2
+    ethanol_tank_position: float = (
+        2.66155  # = 0.41755 + 0.756 + 0.388 + 0.900 + 0.388/2
+    )
+    copv_2_position: float = (
+        3.50055  # = 0.41755 + 0.756 + 0.388 + 0.900 + 0.388 + 0.900 - 0.570/2
+    )
 
     # Rocket body
-    rocket_radius: float = 0.1215          # = 0.243 / 2
+    rocket_radius: float = 0.1215  # = 0.243 / 2
     center_of_mass_without_motor: float = 2.59
 
     # Aerodynamics
     # TODO: split into power_off_drag and power_on_drag if team confirms they should differ
-    drag_coefficient: float = 0.380        # used for both power_off_drag and power_on_drag
+    drag_coefficient: float = 0.380  # used for both power_off_drag and power_on_drag
 
 
 def _try_to_float(value) -> float | None:
@@ -86,7 +89,7 @@ def read_structure(filepath: str | Path) -> Structure:
     ws = wb[SHEET_NAME]
 
     # Build {name: value} from the file, skipping rows we can't make sense of.
-    name_col_idx = ord(NAME_COLUMN) - ord("A") + 1   # turns "A" into 1 for ws.cell()
+    name_col_idx = ord(NAME_COLUMN) - ord("A") + 1  # turns "A" into 1 for ws.cell()
     value_col_idx = ord(VALUE_COLUMN) - ord("A") + 1  # turns "B" into 2
     file_values: dict[str, float] = {}
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
@@ -102,5 +105,3 @@ def read_structure(filepath: str | Path) -> Structure:
             file_values[name] = parsed
 
     return Structure(**file_values)
-
-

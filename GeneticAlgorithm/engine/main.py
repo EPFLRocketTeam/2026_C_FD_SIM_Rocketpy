@@ -8,45 +8,53 @@ from logger import Logger
 from printer import Printer
 from environment_settings import get_environment_parameters, build_environment
 
-
 VARIABLE_GENE_BOUNDS = {
-    'fin_span': (0.01, 1.5),
-    'fin_root_chord': (0.4, 1.0),
-    'fuel_mass': (3.0, 12.0),
-    'oxidizer_mass': (3.0, 16.0),
-    'fin_tip_chord': (0.2, 0.5),
-    'fin_sweep_length': (0.3, 0.8),
-    'tail_top_radius': (0.09, 0.20),
-    'tail_bottom_radius': (0.05, 0.12),
-    'nose_length': (0.8, 1.3),
-    'tail_length': (0.3, 0.5),
-    'fin_count': (3, 6),
+    "fin_span": (0.01, 1.5),
+    "fin_root_chord": (0.4, 1.0),
+    "fuel_mass": (3.0, 12.0),
+    "oxidizer_mass": (3.0, 16.0),
+    "fin_tip_chord": (0.2, 0.5),
+    "fin_sweep_length": (0.3, 0.8),
+    "tail_top_radius": (0.09, 0.20),
+    "tail_bottom_radius": (0.05, 0.12),
+    "nose_length": (0.8, 1.3),
+    "tail_length": (0.3, 0.5),
+    "fin_count": (3, 6),
 }
-FIXED_GENES = {'motor_type': 'liquid'}
-INTEGER_GENES = ['fin_count']
+FIXED_GENES = {"motor_type": "liquid"}
+INTEGER_GENES = ["fin_count"]
 TARGET_APOGEE = 3000.0
 HEIGHT_DEVIATION_ALLOWED = 200.0
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--algo', type=str, default='bayesian', choices=['genetic','memetic','bayesian'])
-    parser.add_argument('--max_gen', type=int, default=15)
-    parser.add_argument('--iter_per_gen', type=int, default=20)
-    parser.add_argument('--local_search_prob', type=float, default=0.35)
-    parser.add_argument('--local_search_evals', type=int, default=12)
-    parser.add_argument('--selection_method', type=str, default='rank')
-    parser.add_argument('--sp', type=float, default=1.5)
-    parser.add_argument('--random-wind', action='store_true', help='Use randomly generated wind layers')
-    parser.add_argument('--strong-wind', action='store_true', help='Use 50 m/s constant wind (testing)')
-    parser.add_argument('--seed', type=int, default=None, help='Random seed for reproducible wind')
+    parser.add_argument(
+        "--algo",
+        type=str,
+        default="bayesian",
+        choices=["genetic", "memetic", "bayesian"],
+    )
+    parser.add_argument("--max_gen", type=int, default=15)
+    parser.add_argument("--iter_per_gen", type=int, default=20)
+    parser.add_argument("--local_search_prob", type=float, default=0.35)
+    parser.add_argument("--local_search_evals", type=int, default=12)
+    parser.add_argument("--selection_method", type=str, default="rank")
+    parser.add_argument("--sp", type=float, default=1.5)
+    parser.add_argument(
+        "--random-wind", action="store_true", help="Use randomly generated wind layers"
+    )
+    parser.add_argument(
+        "--strong-wind", action="store_true", help="Use 50 m/s constant wind (testing)"
+    )
+    parser.add_argument(
+        "--seed", type=int, default=None, help="Random seed for reproducible wind"
+    )
     args = parser.parse_args()
-
-    
 
     now = datetime.datetime.now(datetime.timezone.utc)
     env_params = get_environment_parameters(args)
-    env = build_environment(env_params) 
+    env = build_environment(env_params)
     # env = Environment(
     #     latitude=38.9627778, longitude=-8.96277777, elevation=160,
     #     date=(now.year, now.month, now.day, now.hour)
@@ -56,10 +64,16 @@ def main():
     printer = Printer(VARIABLE_GENE_BOUNDS, FIXED_GENES, TARGET_APOGEE)
     printer.print_header()
 
-    algo_module = importlib.import_module(f'algorithms.{args.algo}')
-    AlgorithmClass = getattr(algo_module, 'Algorithm')
-    optimizer = AlgorithmClass(VARIABLE_GENE_BOUNDS, FIXED_GENES, INTEGER_GENES,
-                               TARGET_APOGEE, HEIGHT_DEVIATION_ALLOWED, args)
+    algo_module = importlib.import_module(f"algorithms.{args.algo}")
+    AlgorithmClass = getattr(algo_module, "Algorithm")
+    optimizer = AlgorithmClass(
+        VARIABLE_GENE_BOUNDS,
+        FIXED_GENES,
+        INTEGER_GENES,
+        TARGET_APOGEE,
+        HEIGHT_DEVIATION_ALLOWED,
+        args,
+    )
 
     evaluator = Evaluator(env_params, TARGET_APOGEE, HEIGHT_DEVIATION_ALLOWED)
     logger = Logger(VARIABLE_GENE_BOUNDS.keys(), algo=args.algo)
@@ -78,7 +92,9 @@ def main():
                 global_best_design = design
                 global_best_metrics = metrics
 
-        printer.print_generation(gen, global_best_fitness, global_best_design, global_best_metrics)
+        printer.print_generation(
+            gen, global_best_fitness, global_best_design, global_best_metrics
+        )
 
     logger.close()
 
@@ -86,12 +102,17 @@ def main():
     builder = RocketBuilder(best_params)
     rocket = builder.build()
     flight = Flight(
-        rocket=rocket, environment=env, rail_length=11.65,
-        inclination=85, heading=144, terminate_on_apogee=True
+        rocket=rocket,
+        environment=env,
+        rail_length=11.65,
+        inclination=85,
+        heading=144,
+        terminate_on_apogee=True,
     )
     builder.show()
     flight.plots.trajectory_3d()
     print("\nCompleted Optimization.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

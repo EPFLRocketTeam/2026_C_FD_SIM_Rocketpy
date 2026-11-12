@@ -6,14 +6,30 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 from optimizer import OptimizerBase
 
+
 class Algorithm(OptimizerBase):
-    def __init__(self, variable_bounds, fixed_genes, integer_genes,
-                 target_apogee, height_tolerance, args):
-        super().__init__(variable_bounds, fixed_genes, integer_genes,
-                         target_apogee, height_tolerance, args)
+    def __init__(
+        self,
+        variable_bounds,
+        fixed_genes,
+        integer_genes,
+        target_apogee,
+        height_tolerance,
+        args,
+    ):
+        super().__init__(
+            variable_bounds,
+            fixed_genes,
+            integer_genes,
+            target_apogee,
+            height_tolerance,
+            args,
+        )
         self.param_names = list(variable_bounds.keys())
         self.bounds = np.array([variable_bounds[p] for p in self.param_names])
-        self.integer_mask = np.array([p in integer_genes for p in self.param_names], dtype=bool)
+        self.integer_mask = np.array(
+            [p in integer_genes for p in self.param_names], dtype=bool
+        )
         self.n_params = len(self.param_names)
 
         self.lb = self.bounds[:, 0]
@@ -21,15 +37,10 @@ class Algorithm(OptimizerBase):
         self.range_ = self.ub - self.lb
 
         kernel = ConstantKernel(1.0, (1e-3, 1e3)) * Matern(
-            length_scale=np.ones(self.n_params),
-            length_scale_bounds=(1e-3, 1e3),
-            nu=2.5
+            length_scale=np.ones(self.n_params), length_scale_bounds=(1e-3, 1e3), nu=2.5
         )
         self.gp = GaussianProcessRegressor(
-            kernel=kernel,
-            n_restarts_optimizer=15,
-            normalize_y=True,
-            random_state=42
+            kernel=kernel, n_restarts_optimizer=15, normalize_y=True, random_state=42
         )
 
         self.X_scaled = np.empty((0, self.n_params))
@@ -66,11 +77,13 @@ class Algorithm(OptimizerBase):
         best_x = None
         best_ei = -1e9
         bounds_scaled = [(0.0, 1.0)] * self.n_params
+
         def neg_ei(x):
             return -self._expected_improvement(x, gp, y_best)
+
         for _ in range(50):
             x0 = np.random.uniform(0, 1, self.n_params)
-            res = minimize(neg_ei, x0, bounds=bounds_scaled, method='L-BFGS-B')
+            res = minimize(neg_ei, x0, bounds=bounds_scaled, method="L-BFGS-B")
             if res.success and -res.fun > best_ei:
                 best_ei = -res.fun
                 best_x = res.x
@@ -97,11 +110,11 @@ class Algorithm(OptimizerBase):
                     gp_work = self.gp
                 else:
                     X_aug = np.vstack([self.X_scaled, np.array(batch_scaled)])
-                    y_aug = np.concatenate([self.y, np.full(len(batch_scaled), y_best * 0.95)])
+                    y_aug = np.concatenate(
+                        [self.y, np.full(len(batch_scaled), y_best * 0.95)]
+                    )
                     gp_work = GaussianProcessRegressor(
-                        kernel=kernel_fixed,
-                        normalize_y=True,
-                        optimizer=None
+                        kernel=kernel_fixed, normalize_y=True, optimizer=None
                     )
                     gp_work.fit(X_aug, y_aug)
                 x_scaled_new = self._optimize_ei(gp_work, y_best)
@@ -109,12 +122,14 @@ class Algorithm(OptimizerBase):
                 x_real_new = self._round_integers(x_real_new)
                 x_scaled_rounded = self._scale(x_real_new)
                 batch_scaled.append(x_scaled_rounded)
-                batch_dicts.append({p: x_real_new[i] for i, p in enumerate(self.param_names)})
+                batch_dicts.append(
+                    {p: x_real_new[i] for i, p in enumerate(self.param_names)}
+                )
             batch = batch_dicts
 
         results = evaluator.evaluate_batch(batch)
 
-        for (design, fitness, metrics) in results:
+        for design, fitness, metrics in results:
             x = np.array([design[p] for p in self.param_names])
             x = self._round_integers(x)
             x_scaled = self._scale(x)

@@ -18,27 +18,28 @@ warnings.filterwarnings("ignore", category=UserWarning, module="rocketpy.motors.
 ENV = None
 
 VARIABLE_GENE_BOUNDS = {
-    'fin_span': (0.01, 1.5),
-    'fin_root_chord': (0.1, 1.0),
-    'fuel_mass': (3.0, 12.0),
-    'oxidizer_mass': (3.0, 16.0),
-    'fin_tip_chord': (0.05, 0.3),
-    'fin_sweep_length': (0.3, 0.8),
-    'tail_top_radius': (0.09, 0.20),
-    'tail_bottom_radius': (0.05, 0.12),
-    'nose_length': (0.8, 1.3),
-    'tail_length': (0.3, 0.6),
-    'fin_count': (3, 6),
+    "fin_span": (0.01, 1.5),
+    "fin_root_chord": (0.1, 1.0),
+    "fuel_mass": (3.0, 12.0),
+    "oxidizer_mass": (3.0, 16.0),
+    "fin_tip_chord": (0.05, 0.3),
+    "fin_sweep_length": (0.3, 0.8),
+    "tail_top_radius": (0.09, 0.20),
+    "tail_bottom_radius": (0.05, 0.12),
+    "nose_length": (0.8, 1.3),
+    "tail_length": (0.3, 0.6),
+    "fin_count": (3, 6),
 }
 
 FIXED_GENES = {
-    'motor_type': 'liquid',
+    "motor_type": "liquid",
 }
 
-INTEGER_GENES = ['fin_count']
+INTEGER_GENES = ["fin_count"]
 
 TARGET_APOGEE = 3000.0
 HEIGHT_DEVIATION_ALLOWED = 200.0
+
 
 def _init_worker_env(lat, lon, elev, year, month, day, hour):
     global ENV
@@ -46,8 +47,12 @@ def _init_worker_env(lat, lon, elev, year, month, day, hour):
     env = Environment(latitude=lat, longitude=lon, elevation=elev, date=date)
     env.set_atmospheric_model(type="forecast", file="GFS")
     ENV = env
-    warnings.filterwarnings("ignore", category=UserWarning, module="rocketpy.motors.motor")
-    warnings.filterwarnings("ignore", message=".*Exact chosen launch time is not available.*")
+    warnings.filterwarnings(
+        "ignore", category=UserWarning, module="rocketpy.motors.motor"
+    )
+    warnings.filterwarnings(
+        "ignore", message=".*Exact chosen launch time is not available.*"
+    )
     warnings.filterwarnings("ignore", message=".*loadtxt: input contained no data.*")
 
 
@@ -62,10 +67,13 @@ class BayesianOptimizer:
     Uses ARD Matérn 5/2 kernel, Expected Improvement acquisition,
     and a constant‑liar batch strategy for parallel evaluations.
     """
+
     def __init__(self, variable_bounds, integer_genes, random_state=42):
         self.param_names = list(variable_bounds.keys())
         self.bounds = np.array([variable_bounds[p] for p in self.param_names])  # (n,2)
-        self.integer_mask = np.array([p in integer_genes for p in self.param_names], dtype=bool)
+        self.integer_mask = np.array(
+            [p in integer_genes for p in self.param_names], dtype=bool
+        )
         self.n_params = len(self.param_names)
 
         self.lb = self.bounds[:, 0]
@@ -73,15 +81,13 @@ class BayesianOptimizer:
         self.range_ = self.ub - self.lb
 
         kernel = ConstantKernel(1.0, (1e-3, 1e3)) * Matern(
-            length_scale=np.ones(self.n_params),
-            length_scale_bounds=(1e-3, 1e3),
-            nu=2.5
+            length_scale=np.ones(self.n_params), length_scale_bounds=(1e-3, 1e3), nu=2.5
         )
         self.gp = GaussianProcessRegressor(
             kernel=kernel,
             n_restarts_optimizer=15,
             normalize_y=True,
-            random_state=random_state
+            random_state=random_state,
         )
 
         self.X_real = np.empty((0, self.n_params))
@@ -125,6 +131,7 @@ class BayesianOptimizer:
 
         z = (mu - y_best) / sigma
         from scipy.stats import norm
+
         ei = (mu - y_best) * norm.cdf(z) + sigma * norm.pdf(z)
         return ei
 
@@ -138,7 +145,7 @@ class BayesianOptimizer:
 
         for _ in range(n_restarts):
             x0 = np.random.uniform(0.0, 1.0, self.n_params)
-            res = minimize(neg_ei, x0, bounds=bounds_scaled, method='L-BFGS-B')
+            res = minimize(neg_ei, x0, bounds=bounds_scaled, method="L-BFGS-B")
             if res.success and -res.fun > best_ei:
                 best_ei = -res.fun
                 best_x = res.x
@@ -152,8 +159,13 @@ class BayesianOptimizer:
         Return a batch of parameter sets (dicts) using the constant‑liar batch strategy.
         """
         if len(self.y) < 2:
-            return [{p: np.random.uniform(*self.bounds[i]) for i,p in enumerate(self.param_names)}
-                    for _ in range(batch_size)]
+            return [
+                {
+                    p: np.random.uniform(*self.bounds[i])
+                    for i, p in enumerate(self.param_names)
+                }
+                for _ in range(batch_size)
+            ]
 
         X_scaled = self._scale(self.X_real)
         self.gp.fit(X_scaled, self.y)
@@ -171,12 +183,14 @@ class BayesianOptimizer:
                 gp_work = self.gp
             else:
                 X_aug = np.vstack([X_scaled, np.array(batch_scaled)])
-                y_aug = np.concatenate([y_base, np.full(len(batch_scaled), y_best * 0.95)])
+                y_aug = np.concatenate(
+                    [y_base, np.full(len(batch_scaled), y_best * 0.95)]
+                )
                 gp_work = GaussianProcessRegressor(
                     kernel=kernel_final,
                     normalize_y=True,
                     optimizer=None,
-                    random_state=self.gp.random_state
+                    random_state=self.gp.random_state,
                 )
                 gp_work.fit(X_aug, y_aug)
 
@@ -186,7 +200,9 @@ class BayesianOptimizer:
             x_scaled_rounded = self._scale(x_real_new)
 
             batch_scaled.append(x_scaled_rounded)
-            batch_dicts.append({p: x_real_new[i] for i, p in enumerate(self.param_names)})
+            batch_dicts.append(
+                {p: x_real_new[i] for i, p in enumerate(self.param_names)}
+            )
 
         return batch_dicts
 
@@ -238,7 +254,7 @@ class RocketPhenotype:
                 rail_length=11.65,
                 inclination=85,
                 heading=144,
-                terminate_on_apogee=True
+                terminate_on_apogee=True,
             )
 
             self.apogee = flight.apogee
@@ -261,7 +277,7 @@ class RocketPhenotype:
             elif self.sm > 2.0:
                 sm_penalty = self.sm - 2.0
 
-            self.fitness /= (1.0 + sm_penalty * 5.0)
+            self.fitness /= 1.0 + sm_penalty * 5.0
             self.evaluated = True
 
         except Exception:
@@ -287,13 +303,15 @@ class EvolutionPrinter:
         apogee_error = abs(best_rocket.apogee - self.target_apogee)
         print(f"\n--- Generation {generation} ---")
         print(f"Best fitness:       {best_rocket.fitness:.2f}")
-        print(f"Apogee:             {best_rocket.apogee:.2f} m (Error: {apogee_error:.2f} m)")
+        print(
+            f"Apogee:             {best_rocket.apogee:.2f} m (Error: {apogee_error:.2f} m)"
+        )
         print(f"Drift (total):      {best_rocket.drift:.2f} m")
         print(f"Stability Margin:   {best_rocket.sm:.2f}")
         print("\nOptimized parameters:")
         for key in self.variable_bounds.keys():
             value = best_rocket.dna.genes[key]
-            display_name = key.replace('_', ' ').capitalize()
+            display_name = key.replace("_", " ").capitalize()
             print(f"  {display_name:20} {value:8.3f}")
 
 
@@ -306,7 +324,7 @@ if __name__ == "__main__":
         latitude=38.9627778,
         longitude=-8.96277777,
         elevation=160,
-        date=(now.year, now.month, now.day, now.hour)
+        date=(now.year, now.month, now.day, now.hour),
     )
     env.set_atmospheric_model(type="forecast", file="GFS")
     ENV = env
@@ -323,7 +341,7 @@ if __name__ == "__main__":
     with ProcessPoolExecutor(
         max_workers=num_workers,
         initializer=_init_worker_env,
-        initargs=(38.9627778, -8.96277777, 160, now.year, now.month, now.day, now.hour)
+        initargs=(38.9627778, -8.96277777, 160, now.year, now.month, now.day, now.hour),
     ) as executor:
 
         initial_rockets = [executor.submit(_eval_rocket, r) for r in initial_rockets]
@@ -365,7 +383,7 @@ if __name__ == "__main__":
         rail_length=11.65,
         inclination=85,
         heading=144,
-        terminate_on_apogee=True
+        terminate_on_apogee=True,
     )
 
     best_builder.show()

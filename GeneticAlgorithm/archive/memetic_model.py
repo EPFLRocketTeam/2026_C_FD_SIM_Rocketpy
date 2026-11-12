@@ -9,27 +9,27 @@ from rocket_builder import RocketBuilder
 warnings.filterwarnings("ignore", category=UserWarning, module="rocketpy.motors.motor")
 
 VARIABLE_GENE_BOUNDS = {
-    'fin_span': (0.01, 1.5),         # m
-    'fin_root_chord': (0.1, 1.0),    # m
-    'fuel_mass': (3.0, 12.0),        # kg
-    'oxidizer_mass': (3.0, 16.0),    # kg
-    'fin_tip_chord': (0.05, 0.3),    # m
-    'fin_sweep_length': (0.3, 0.8),  # m
-    'tail_top_radius': (0.09, 0.20), # m
-    'tail_bottom_radius': (0.05, 0.12), # m
-    'nose_length': (0.8, 1.3),       # m
-    'tail_length': (0.3, 0.6),       # m
-    'fin_count': (3, 6),             # integer
+    "fin_span": (0.01, 1.5),  # m
+    "fin_root_chord": (0.1, 1.0),  # m
+    "fuel_mass": (3.0, 12.0),  # kg
+    "oxidizer_mass": (3.0, 16.0),  # kg
+    "fin_tip_chord": (0.05, 0.3),  # m
+    "fin_sweep_length": (0.3, 0.8),  # m
+    "tail_top_radius": (0.09, 0.20),  # m
+    "tail_bottom_radius": (0.05, 0.12),  # m
+    "nose_length": (0.8, 1.3),  # m
+    "tail_length": (0.3, 0.6),  # m
+    "fin_count": (3, 6),  # integer
 }
 
 FIXED_GENES = {
-    'motor_type': 'liquid',
+    "motor_type": "liquid",
 }
 
-INTEGER_GENES = ['fin_count']
+INTEGER_GENES = ["fin_count"]
 
-TARGET_APOGEE = 3000.0 # m
-HEIGHT_DEVIATION_ALLOWED = 200.0 # m
+TARGET_APOGEE = 3000.0  # m
+HEIGHT_DEVIATION_ALLOWED = 200.0  # m
 
 # now = datetime.datetime.now(datetime.timezone.utc)
 # env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160, date=(now.year, now.month, now.day, now.hour))
@@ -37,6 +37,7 @@ HEIGHT_DEVIATION_ALLOWED = 200.0 # m
 
 env = Environment(latitude=38.9627778, longitude=-8.96277777, elevation=160)
 env.set_atmospheric_model(type="standard_atmosphere")
+
 
 class DNA:
     def __init__(self, genes=None):
@@ -78,6 +79,7 @@ class DNA:
                     self.genes[key] += noise
                     self.genes[key] = max(min_val, min(max_val, self.genes[key]))
 
+
 class RocketPhenotype:
     def __init__(self, dna):
         self.dna = dna
@@ -111,7 +113,7 @@ class RocketPhenotype:
                 rail_length=11.65,
                 inclination=85,
                 heading=144,
-                terminate_on_apogee=True
+                terminate_on_apogee=True,
             )
 
             self.apogee = flight.apogee
@@ -124,7 +126,7 @@ class RocketPhenotype:
 
             z_error = abs(self.apogee - TARGET_APOGEE)
             self.fitness = 10000.0 / (1.0 + z_error + (self.drift * 0.1))
-            
+
             if z_error <= HEIGHT_DEVIATION_ALLOWED:
                 self.fitness *= 2
 
@@ -133,12 +135,13 @@ class RocketPhenotype:
                 sm_penalty = 1.5 - self.sm
             elif self.sm > 2.0:
                 sm_penalty = self.sm - 2.0
-            
-            self.fitness /= (1.0 + sm_penalty * 5.0)
+
+            self.fitness /= 1.0 + sm_penalty * 5.0
             self.evaluated = True
 
         except Exception as e:
             self.fitness = 1e-5 / (1 + random.random())
+
 
 class EvolutionPrinter:
     def __init__(self, variable_bounds, fixed_genes, target_apogee):
@@ -160,15 +163,18 @@ class EvolutionPrinter:
 
         print(f"\n--- Generation {generation} ---")
         print(f"Best fitness:       {best_rocket.fitness:.2f}")
-        print(f"Apogee:             {best_rocket.apogee:.2f} m (Error: {apogee_error:.2f} m)")
+        print(
+            f"Apogee:             {best_rocket.apogee:.2f} m (Error: {apogee_error:.2f} m)"
+        )
         print(f"Drift (total):      {best_rocket.drift:.2f} m")
         print(f"Stability Margin:   {best_rocket.sm:.2f}")
 
         print("\nOptimized parameters:")
         for key in self.variable_bounds.keys():
             value = best_rocket.dna.genes[key]
-            display_name = key.replace('_', ' ').capitalize()
+            display_name = key.replace("_", " ").capitalize()
             print(f"  {display_name:20} {value:8.3f}")
+
 
 def local_search(dna, max_evaluations=12):
     best_genes = copy.deepcopy(dna.genes)
@@ -176,19 +182,21 @@ def local_search(dna, max_evaluations=12):
     current_p.evaluate()
     best_fitness = current_p.fitness
 
-    if best_fitness <= 0.01: 
+    if best_fitness <= 0.01:
         return dna
 
     step_factor = 0.05
 
     for _ in range(max_evaluations):
         new_genes = copy.deepcopy(best_genes)
-        
+
         for key, (min_val, max_val) in VARIABLE_GENE_BOUNDS.items():
             if key in INTEGER_GENES:
-                if random.random() < step_factor * 5: 
+                if random.random() < step_factor * 5:
                     shift = random.choice([-1, 1])
-                    new_genes[key] = int(np.clip(new_genes[key] + shift, min_val, max_val))
+                    new_genes[key] = int(
+                        np.clip(new_genes[key] + shift, min_val, max_val)
+                    )
             else:
                 range_span = max_val - min_val
                 noise = random.gauss(0, step_factor * range_span)
@@ -206,6 +214,7 @@ def local_search(dna, max_evaluations=12):
             step_factor = max(0.001, step_factor * 0.8)
 
     return DNA(best_genes)
+
 
 class MemeticPopulation:
     def __init__(self, pop_size):
@@ -234,7 +243,7 @@ class MemeticPopulation:
             t0 = 5.0
             decay = 0.95
             temperature = t0 * (decay ** (self.generation - 1))
-        
+
         fitnesses = np.array([r.fitness for r in self.rockets])
         max_fit = np.max(fitnesses)
         norm_fitnesses = fitnesses / max_fit if max_fit > 0 else fitnesses
@@ -244,16 +253,24 @@ class MemeticPopulation:
         chosen_idx = np.random.choice(len(self.rockets), p=probs)
         return self.rockets[chosen_idx].dna
 
-    def evolve(self, selection_method='rank', sp=1.5, local_search_evals=10, local_search_prob=0.4):
+    def evolve(
+        self,
+        selection_method="rank",
+        sp=1.5,
+        local_search_evals=10,
+        local_search_prob=0.4,
+    ):
         new_rockets = []
         new_rockets.append(RocketPhenotype(copy.deepcopy(self.rockets[0].dna)))
 
-        if selection_method == 'rank':
+        if selection_method == "rank":
             select_func = lambda: self.rank_select_parent(sp=sp)
-        elif selection_method == 'boltzmann':
+        elif selection_method == "boltzmann":
             select_func = lambda: self.boltzmann_select_parent()
         else:
-            select_func = lambda: max(random.sample(self.rockets, 3), key=lambda r: r.fitness).dna
+            select_func = lambda: max(
+                random.sample(self.rockets, 3), key=lambda r: r.fitness
+            ).dna
 
         while len(new_rockets) < self.pop_size:
             parent_a = select_func()
@@ -262,10 +279,14 @@ class MemeticPopulation:
 
             mutation_strength = max(0.02, 0.25 / np.sqrt(self.generation))
             mutation_rate = max(0.05, 0.25 * (0.9 ** (self.generation - 1)))
-            child_dna.mutate(mutation_rate=mutation_rate, mutation_strength=mutation_strength)
+            child_dna.mutate(
+                mutation_rate=mutation_rate, mutation_strength=mutation_strength
+            )
 
             if random.random() < local_search_prob:
-                improved_dna = local_search(child_dna, max_evaluations=local_search_evals)
+                improved_dna = local_search(
+                    child_dna, max_evaluations=local_search_evals
+                )
                 child_phenotype = RocketPhenotype(improved_dna)
             else:
                 child_phenotype = RocketPhenotype(child_dna)
@@ -275,10 +296,11 @@ class MemeticPopulation:
         self.rockets = new_rockets
         self.generation += 1
 
+
 if __name__ == "__main__":
     POPULATION_SIZE = 25
     GENERATIONS = 6
-    LOCAL_SEARCH_PROB = 0.35 
+    LOCAL_SEARCH_PROB = 0.35
     LOCAL_SEARCH_EVALS = 12
 
     printer = EvolutionPrinter(VARIABLE_GENE_BOUNDS, FIXED_GENES, TARGET_APOGEE)
@@ -295,9 +317,9 @@ if __name__ == "__main__":
 
         if gen < GENERATIONS:
             pop.evolve(
-                selection_method='rank', 
-                local_search_evals=LOCAL_SEARCH_EVALS, 
-                local_search_prob=LOCAL_SEARCH_PROB
+                selection_method="rank",
+                local_search_evals=LOCAL_SEARCH_EVALS,
+                local_search_prob=LOCAL_SEARCH_PROB,
             )
 
     best_params = {**FIXED_GENES, **pop.rockets[0].dna.genes}
@@ -310,9 +332,9 @@ if __name__ == "__main__":
         rail_length=11.65,
         inclination=85,
         heading=144,
-        terminate_on_apogee=True
+        terminate_on_apogee=True,
     )
-    
+
     best_builder.show()
     best_flight.plots.trajectory_3d()
     print("\nMemetic Optimization Complete.")

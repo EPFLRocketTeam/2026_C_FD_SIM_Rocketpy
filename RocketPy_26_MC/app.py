@@ -20,6 +20,7 @@ Structure:
 Requires (on top of the single-sim dependencies): plotly (for the 3D and
 impact plots in Monte Carlo mode) — `pip install plotly`.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -34,6 +35,7 @@ import streamlit as st
 
 try:
     import plotly.graph_objects as go
+
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
@@ -72,7 +74,9 @@ with col_logo:
 def fmt(value: float, sig: int = 4) -> str:
     """Format a number with a reasonable number of significant digits
     (avoids ugly values like 37.00000) while keeping large numbers readable."""
-    if value is None or (isinstance(value, float) and (math.isnan(value) or math.isinf(value))):
+    if value is None or (
+        isinstance(value, float) and (math.isnan(value) or math.isinf(value))
+    ):
         return "-"
     if value == 0:
         return "0"
@@ -84,6 +88,7 @@ def fmt(value: float, sig: int = 4) -> str:
         return f"{int(rounded)}"
     return f"{rounded:g}"
 
+
 # ----------------------------------------------------------------------
 # 1. Available models (path to the default-values Excel file)
 # ----------------------------------------------------------------------
@@ -94,24 +99,60 @@ MODELS = {
 # Parameters considered "essential" -> visible even in simple mode.
 # The rest only appears when "Advanced mode" is checked.
 ESSENTIAL_FIELDS = {
-    "Structure": {"mode", "trig_alt_para", "tank_spherical_caps", "tank_volume", "r_int"},
+    "Structure": {
+        "mode",
+        "trig_alt_para",
+        "tank_spherical_caps",
+        "tank_volume",
+        "r_int",
+    },
     "Propellant": {"of_ratio", "isp", "thrust", "total_impulse", "f_hold_down"},
-    "Parameters": {"version", "save_files", "write_to_file", "latitude", "longitude", "elevation", "inclination_rail", "heading_rail"},
+    "Parameters": {
+        "version",
+        "save_files",
+        "write_to_file",
+        "latitude",
+        "longitude",
+        "elevation",
+        "inclination_rail",
+        "heading_rail",
+    },
 }
 
 # Parameters fields that exist for schema parity with the base simulation
 # code but are not used by PRISM's own export flow (which is driven by the
 # sidebar/export checkboxes further down) — always hidden from the form.
 PARAMETERS_HIDDEN_FIELDS = {
-    "output_general", "output_euler_angles", "output_stability",
-    "output_trajectory", "output_velocity", "output_acceleration", "output_thrust_curve",
+    "output_general",
+    "output_euler_angles",
+    "output_stability",
+    "output_trajectory",
+    "output_velocity",
+    "output_acceleration",
+    "output_thrust_curve",
 }
 
 LAUNCH_SITES = {
-    "EuRoC (Portugal)": {"latitude": 39.390150, "longitude": -8.289145, "elevation": 130.0},
-    "Payerne (Switzerland)": {"latitude": 46.8432, "longitude": 6.9151, "elevation": 447.0},
-    "EPFL (Switzerland)": {"latitude": 46.5191, "longitude": 6.5668, "elevation": 397.0},
-    "Sion (Switzerland)": {"latitude": 46.2196, "longitude": 7.3267, "elevation": 482.0},
+    "EuRoC (Portugal)": {
+        "latitude": 39.390150,
+        "longitude": -8.289145,
+        "elevation": 130.0,
+    },
+    "Payerne (Switzerland)": {
+        "latitude": 46.8432,
+        "longitude": 6.9151,
+        "elevation": 447.0,
+    },
+    "EPFL (Switzerland)": {
+        "latitude": 46.5191,
+        "longitude": 6.5668,
+        "elevation": 397.0,
+    },
+    "Sion (Switzerland)": {
+        "latitude": 46.2196,
+        "longitude": 7.3267,
+        "elevation": 482.0,
+    },
 }
 
 
@@ -234,14 +275,21 @@ PARAM_HELP = {
 }
 
 
-def render_dataclass_form(obj, prefix: str, advanced: bool, essential_keys: set[str], exclude_fields: set[str] = frozenset()):
+def render_dataclass_form(
+    obj,
+    prefix: str,
+    advanced: bool,
+    essential_keys: set[str],
+    exclude_fields: set[str] = frozenset(),
+):
     """
     Generates a form from a dataclass's fields.
     Returns a dict {field: new_value} to apply with dataclasses.replace().
     """
     updated = {}
     field_list = [
-        f for f in dataclasses.fields(obj)
+        f
+        for f in dataclasses.fields(obj)
         if f.name not in exclude_fields and (advanced or f.name in essential_keys)
     ]
 
@@ -252,22 +300,34 @@ def render_dataclass_form(obj, prefix: str, advanced: bool, essential_keys: set[
         help_text = PARAM_HELP.get(f.name)
         with cols[i % 2]:
             if isinstance(value, bool):
-                updated[f.name] = st.checkbox(f.name, value=value, key=widget_key, help=help_text)
+                updated[f.name] = st.checkbox(
+                    f.name, value=value, key=widget_key, help=help_text
+                )
             elif isinstance(value, int):
-                updated[f.name] = st.number_input(f.name, value=value, step=1, key=widget_key, help=help_text)
+                updated[f.name] = st.number_input(
+                    f.name, value=value, step=1, key=widget_key, help=help_text
+                )
             elif isinstance(value, float):
-                updated[f.name] = st.number_input(f.name, value=value, format="%.4g", key=widget_key, help=help_text)
+                updated[f.name] = st.number_input(
+                    f.name, value=value, format="%.4g", key=widget_key, help=help_text
+                )
             elif isinstance(value, str):
-                updated[f.name] = st.text_input(f.name, value=value, key=widget_key, help=help_text)
+                updated[f.name] = st.text_input(
+                    f.name, value=value, key=widget_key, help=help_text
+                )
             else:
                 st.write(f"{f.name}: {value}")
                 updated[f.name] = value
 
     if not advanced:
-        total_visible_candidates = len([f for f in dataclasses.fields(obj) if f.name not in exclude_fields])
+        total_visible_candidates = len(
+            [f for f in dataclasses.fields(obj) if f.name not in exclude_fields]
+        )
         n_hidden = total_visible_candidates - len(field_list)
         if n_hidden > 0:
-            st.caption(f"{n_hidden} advanced parameter(s) hidden — check \u00ab Advanced mode \u00bb to see them.")
+            st.caption(
+                f"{n_hidden} advanced parameter(s) hidden — check \u00ab Advanced mode \u00bb to see them."
+            )
 
     return updated
 
@@ -369,6 +429,7 @@ default_structure, default_propellant, default_parameters = load_defaults(
     excel_path, os.path.getmtime(excel_path), mode_com
 )
 
+
 # ========================================================================
 # Mode : Simulation normale
 # ========================================================================
@@ -383,8 +444,11 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
 
     with tab_structure:
         structure_vals = render_dataclass_form(
-            default_structure, f"struct{default_structure.mode_CoM}", advanced,
-            ESSENTIAL_FIELDS["Structure"], exclude_fields={"mode_CoM"},
+            default_structure,
+            f"struct{default_structure.mode_CoM}",
+            advanced,
+            ESSENTIAL_FIELDS["Structure"],
+            exclude_fields={"mode_CoM"},
         )
 
     with tab_propellant:
@@ -392,7 +456,9 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
             "Thrust curve model",
             options=["constant", "peaked"],
             index=0 if default_propellant.thrust_curve_mode != "peaked" else 1,
-            format_func=lambda m: "Constant thrust" if m == "constant" else "Peak then derate",
+            format_func=lambda m: (
+                "Constant thrust" if m == "constant" else "Peak then derate"
+            ),
             horizontal=True,
             key="thrust_curve_mode",
             help=(
@@ -409,24 +475,40 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
         if thrust_curve_mode == "peaked":
             derated_thrust_val = st.number_input(
                 "Derated thrust (after peak) [N]",
-                value=float(default_propellant.derated_thrust or default_propellant.thrust * 0.85),
+                value=float(
+                    default_propellant.derated_thrust
+                    or default_propellant.thrust * 0.85
+                ),
                 format="%.4g",
                 key="prop_derated_thrust",
                 help="Steady thrust the engine settles to after the initial peak, before shutdown. 0 = default to 85% of the peak.",
             )
 
         propellant_vals = render_dataclass_form(
-            default_propellant, "prop", advanced, ESSENTIAL_FIELDS["Propellant"],
-            exclude_fields={"thrust_curve_mode", "derated_thrust", "m_lox_density", "m_eth_density"},
+            default_propellant,
+            "prop",
+            advanced,
+            ESSENTIAL_FIELDS["Propellant"],
+            exclude_fields={
+                "thrust_curve_mode",
+                "derated_thrust",
+                "m_lox_density",
+                "m_eth_density",
+            },
         )
         propellant_vals["thrust_curve_mode"] = thrust_curve_mode
         propellant_vals["derated_thrust"] = derated_thrust_val
 
     with tab_parameters:
         site_options = ["Custom"] + list(LAUNCH_SITES.keys())
-        site_choice = st.selectbox("Launch site preset", site_options, key="site_preset")
+        site_choice = st.selectbox(
+            "Launch site preset", site_options, key="site_preset"
+        )
 
-        if site_choice != "Custom" and st.session_state.get("_prev_site_preset") != site_choice:
+        if (
+            site_choice != "Custom"
+            and st.session_state.get("_prev_site_preset") != site_choice
+        ):
             site = LAUNCH_SITES[site_choice]
             st.session_state["params_latitude"] = site["latitude"]
             st.session_state["params_longitude"] = site["longitude"]
@@ -434,19 +516,25 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
         st.session_state["_prev_site_preset"] = site_choice
 
         version_val = st.text_input(
-            "version", value=default_parameters.version, key="params_version",
+            "version",
+            value=default_parameters.version,
+            key="params_version",
             help=PARAM_HELP.get("version"),
         )
 
         col_save, col_write = st.columns(2)
         with col_save:
             save_files_val = st.checkbox(
-                "save_files", value=default_parameters.save_files, key="params_save_files",
+                "save_files",
+                value=default_parameters.save_files,
+                key="params_save_files",
                 help=PARAM_HELP.get("save_files"),
             )
         with col_write:
             write_to_file_val = st.checkbox(
-                "write_to_file", value=default_parameters.write_to_file, key="params_write_to_file",
+                "write_to_file",
+                value=default_parameters.write_to_file,
+                key="params_write_to_file",
                 help=PARAM_HELP.get("write_to_file"),
             )
 
@@ -465,16 +553,25 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
 
             st.caption("Graphs (PNG)")
             from output_plots import PLOT_REGISTRY
+
             plot_keys = list(PLOT_REGISTRY.keys())
             plot_cols = st.columns(len(plot_keys))
             for col, key in zip(plot_cols, plot_keys):
                 label, _ = PLOT_REGISTRY[key]
                 with col:
-                    st.checkbox(label, value=(key in ("euler_angles", "stability_margin")), key=f"exp_plot_{key}")
+                    st.checkbox(
+                        label,
+                        value=(key in ("euler_angles", "stability_margin")),
+                        key=f"exp_plot_{key}",
+                    )
 
         parameters_vals = render_dataclass_form(
-            default_parameters, "params", advanced, ESSENTIAL_FIELDS["Parameters"],
-            exclude_fields={"version", "save_files", "write_to_file"} | PARAMETERS_HIDDEN_FIELDS,
+            default_parameters,
+            "params",
+            advanced,
+            ESSENTIAL_FIELDS["Parameters"],
+            exclude_fields={"version", "save_files", "write_to_file"}
+            | PARAMETERS_HIDDEN_FIELDS,
         )
         parameters_vals["version"] = version_val
         parameters_vals["save_files"] = save_files_val
@@ -491,7 +588,9 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
         with st.spinner("Simulation running (RocketPy)..."):
             try:
                 result = run_simulation(
-                    structure, propellant, parameters,
+                    structure,
+                    propellant,
+                    parameters,
                     work_dir="sim_output",
                 )
                 st.session_state["result"] = result
@@ -515,17 +614,32 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
                 directory = result.get("output_folder") or f"sim_output/{version}"
                 exported = []
                 if st.session_state.get("exp_general", False):
-                    exported.append(str(write_flight_outputs_csv(
-                        result["flight"], version, directory,
-                        dry_mass=result.get("dry_mass"), wet_mass=result.get("wet_mass"),
-                        nominal_total_impulse=result.get("nominal_total_impulse"),
-                    )))
+                    exported.append(
+                        str(
+                            write_flight_outputs_csv(
+                                result["flight"],
+                                version,
+                                directory,
+                                dry_mass=result.get("dry_mass"),
+                                wet_mass=result.get("wet_mass"),
+                                nominal_total_impulse=result.get(
+                                    "nominal_total_impulse"
+                                ),
+                            )
+                        )
+                    )
                 if st.session_state.get("exp_struct"):
-                    exported.append(str(write_dataclass_csv(structure, "Structure", directory)))
+                    exported.append(
+                        str(write_dataclass_csv(structure, "Structure", directory))
+                    )
                 if st.session_state.get("exp_prop"):
-                    exported.append(str(write_dataclass_csv(propellant, "Propellant", directory)))
+                    exported.append(
+                        str(write_dataclass_csv(propellant, "Propellant", directory))
+                    )
                 if st.session_state.get("exp_params"):
-                    exported.append(str(write_dataclass_csv(parameters, "Parameters", directory)))
+                    exported.append(
+                        str(write_dataclass_csv(parameters, "Parameters", directory))
+                    )
                 for key in PLOT_REGISTRY:
                     if st.session_state.get(f"exp_plot_{key}"):
                         _, plot_fn = PLOT_REGISTRY[key]
@@ -549,9 +663,15 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
         st.subheader("Results")
 
         if result.get("rocket_drawing") and Path(result["rocket_drawing"]).exists():
-            st.image(result["rocket_drawing"], caption="Rocket model (generated by RocketPy)", width=500)
+            st.image(
+                result["rocket_drawing"],
+                caption="Rocket model (generated by RocketPy)",
+                width=500,
+            )
 
-        st.caption(f"Atmospheric model used: {result.get('atmospheric_model', 'unknown')}")
+        st.caption(
+            f"Atmospheric model used: {result.get('atmospheric_model', 'unknown')}"
+        )
 
         if result.get("output_folder"):
             st.success(f"Intermediate files saved to: `{result['output_folder']}`")
@@ -559,13 +679,18 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
             st.caption("Intermediate files were not saved (save_files is off).")
 
         if st.session_state.get("exported_csv_paths"):
-            csv_list = "\n".join(f"- `{p}`" for p in st.session_state["exported_csv_paths"])
+            csv_list = "\n".join(
+                f"- `{p}`" for p in st.session_state["exported_csv_paths"]
+            )
             st.info(f"Exported files:\n{csv_list}")
 
         col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("Dry mass", f"{fmt(result['dry_mass'])} kg")
         col2.metric("Wet mass", f"{fmt(result['wet_mass'])} kg")
-        col3.metric("Rail exit stability", f"{fmt(result['out_of_rail_stability_margin'], 3)} cal")
+        col3.metric(
+            "Rail exit stability",
+            f"{fmt(result['out_of_rail_stability_margin'], 3)} cal",
+        )
         col4.metric("Rail exit velocity", f"{fmt(result['out_of_rail_velocity'])} m/s")
         col5.metric("Max Mach", f"{fmt(result['max_mach'], 3)}")
 
@@ -578,10 +703,12 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
         )
 
         with graph_traj:
-            df_traj = pd.DataFrame({
-                "time": result["trajectory"]["time"],
-                "Altitude (m)": result["trajectory"]["altitude"],
-            })
+            df_traj = pd.DataFrame(
+                {
+                    "time": result["trajectory"]["time"],
+                    "Altitude (m)": result["trajectory"]["altitude"],
+                }
+            )
             st.line_chart(df_traj, x="time", y="Altitude (m)")
 
             st.caption("Ground track: liftoff → impact")
@@ -589,7 +716,9 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
 
             path_coords = [
                 [lon, lat, alt]
-                for lat, lon, alt in zip(map_data["latitude"], map_data["longitude"], map_data["altitude"])
+                for lat, lon, alt in zip(
+                    map_data["latitude"], map_data["longitude"], map_data["altitude"]
+                )
             ]
 
             path_layer = pdk.Layer(
@@ -604,13 +733,21 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
 
             points_data = [
                 {
-                    "position": [map_data["launch_longitude"], map_data["launch_latitude"], 0],
+                    "position": [
+                        map_data["launch_longitude"],
+                        map_data["launch_latitude"],
+                        0,
+                    ],
                     "label": "Liftoff",
                     "color": [0, 170, 60],
                     "radius": 25,
                 },
                 {
-                    "position": [map_data["impact_longitude"], map_data["impact_latitude"], 0],
+                    "position": [
+                        map_data["impact_longitude"],
+                        map_data["impact_latitude"],
+                        0,
+                    ],
                     "label": f"Impact — {fmt(map_data['impact_distance'])} m from launch",
                     "color": [220, 40, 40],
                     "radius": 25,
@@ -618,12 +755,18 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
             ]
 
             for event in map_data.get("parachute_events", []):
-                points_data.append({
-                    "position": [event["longitude"], event["latitude"], event["altitude"]],
-                    "label": f"{event['name']} deployed — {fmt(event['altitude'])} m AGL, t={fmt(event['time'])} s",
-                    "color": [40, 120, 220],
-                    "radius": 60,
-                })
+                points_data.append(
+                    {
+                        "position": [
+                            event["longitude"],
+                            event["latitude"],
+                            event["altitude"],
+                        ],
+                        "label": f"{event['name']} deployed — {fmt(event['altitude'])} m AGL, t={fmt(event['time'])} s",
+                        "color": [40, 120, 220],
+                        "radius": 60,
+                    }
+                )
 
             point_layer = pdk.Layer(
                 "ScatterplotLayer",
@@ -642,39 +785,51 @@ def render_single_sim(default_structure, default_propellant, default_parameters)
                 pitch=45,
             )
 
-            st.pydeck_chart(pdk.Deck(
-                layers=[path_layer, point_layer],
-                initial_view_state=view_state,
-                tooltip={"text": "{label}"},
-            ))
+            st.pydeck_chart(
+                pdk.Deck(
+                    layers=[path_layer, point_layer],
+                    initial_view_state=view_state,
+                    tooltip={"text": "{label}"},
+                )
+            )
 
         with graph_vel:
-            df_vel = pd.DataFrame({
-                "time": result["velocity"]["time"],
-                "Speed (m/s)": result["velocity"]["speed"],
-            })
+            df_vel = pd.DataFrame(
+                {
+                    "time": result["velocity"]["time"],
+                    "Speed (m/s)": result["velocity"]["speed"],
+                }
+            )
             st.line_chart(df_vel, x="time", y="Speed (m/s)")
 
         with graph_acc:
-            df_acc = pd.DataFrame({
-                "time": result["acceleration"]["time"],
-                "Acceleration (m/s2)": result["acceleration"]["accel"],
-            })
+            df_acc = pd.DataFrame(
+                {
+                    "time": result["acceleration"]["time"],
+                    "Acceleration (m/s2)": result["acceleration"]["accel"],
+                }
+            )
             st.line_chart(df_acc, x="time", y="Acceleration (m/s2)")
 
         with graph_margin:
-            df_margin = pd.DataFrame({
-                "time": result["static_margin"]["time"],
-                "Static margin (calibers)": result["static_margin"]["margin"],
-            })
+            df_margin = pd.DataFrame(
+                {
+                    "time": result["static_margin"]["time"],
+                    "Static margin (calibers)": result["static_margin"]["margin"],
+                }
+            )
             st.line_chart(df_margin, x="time", y="Static margin (calibers)")
-            st.caption("Static margin in calibers — should stay positive for a stable rocket.")
+            st.caption(
+                "Static margin in calibers — should stay positive for a stable rocket."
+            )
 
         with graph_thrust:
-            df_thrust = pd.DataFrame({
-                "time": result["thrust_curve"]["time"],
-                "Thrust (N)": result["thrust_curve"]["thrust"],
-            })
+            df_thrust = pd.DataFrame(
+                {
+                    "time": result["thrust_curve"]["time"],
+                    "Thrust (N)": result["thrust_curve"]["thrust"],
+                }
+            )
             st.line_chart(df_thrust, x="time", y="Thrust (N)")
 
         st.info(
@@ -733,8 +888,17 @@ MC_VARIABLES = {
 }
 
 _MC_STRUCT_MASS_FIELDS = [
-    "m_bt", "m_ebay", "m_lox", "m_aerocover", "m_pbay1",
-    "m_eth", "m_pbay2", "m_avbay", "m_rebay", "m_nosecone", "m_fins",
+    "m_bt",
+    "m_ebay",
+    "m_lox",
+    "m_aerocover",
+    "m_pbay1",
+    "m_eth",
+    "m_pbay2",
+    "m_avbay",
+    "m_rebay",
+    "m_nosecone",
+    "m_fins",
 ]
 _MC_STRUCT_FIN_FIELDS = ["env_fins", "rc_fins", "tc_fins", "sweep_l_fins"]
 
@@ -782,7 +946,15 @@ def sample_wind_profile(wind_base_speed, gusty, grid, rng):
     return profile
 
 
-def apply_mc_perturbation(base_structure, base_propellant, base_parameters, selected, grids, wind_base_speed, rng):
+def apply_mc_perturbation(
+    base_structure,
+    base_propellant,
+    base_parameters,
+    selected,
+    grids,
+    wind_base_speed,
+    rng,
+):
     """Returns (structure, propellant, parameters, wind_profile, offsets)
     for one Monte Carlo draw. `grids` is a dict {var_key: grid_array} giving
     each selected parameter its own ± range/step grid. `offsets` records
@@ -804,32 +976,44 @@ def apply_mc_perturbation(base_structure, base_propellant, base_parameters, sele
 
     if "dry_mass" in selected:
         f = _mc_sample_pct(rng, grids["dry_mass"]) / 100.0
-        updates = {name: getattr(structure, name) * (1 + f) for name in _MC_STRUCT_MASS_FIELDS}
+        updates = {
+            name: getattr(structure, name) * (1 + f) for name in _MC_STRUCT_MASS_FIELDS
+        }
         structure = dataclasses.replace(structure, **updates)
         offsets["dry_mass [%]"] = f * 100
 
     if "fins" in selected:
         f = _mc_sample_pct(rng, grids["fins"]) / 100.0
-        updates = {name: getattr(structure, name) * (1 + f) for name in _MC_STRUCT_FIN_FIELDS}
+        updates = {
+            name: getattr(structure, name) * (1 + f) for name in _MC_STRUCT_FIN_FIELDS
+        }
         structure = dataclasses.replace(structure, **updates)
         offsets["fins [%]"] = f * 100
 
     if "drag" in selected:
         f = _mc_sample_pct(rng, grids["drag"]) / 100.0
-        structure = dataclasses.replace(structure, drag_coeff_rocket=structure.drag_coeff_rocket * (1 + f))
+        structure = dataclasses.replace(
+            structure, drag_coeff_rocket=structure.drag_coeff_rocket * (1 + f)
+        )
         offsets["drag [%]"] = f * 100
 
     if "rail_angle" in selected:
         f = _mc_sample_pct(rng, grids["rail_angle"]) / 100.0
-        parameters = dataclasses.replace(parameters, inclination_rail=parameters.inclination_rail * (1 + f))
+        parameters = dataclasses.replace(
+            parameters, inclination_rail=parameters.inclination_rail * (1 + f)
+        )
         offsets["rail_angle [%]"] = f * 100
 
     if "chute_alt" in selected:
         f = _mc_sample_pct(rng, grids["chute_alt"]) / 100.0
-        structure = dataclasses.replace(structure, trig_alt_para=structure.trig_alt_para * (1 + f))
+        structure = dataclasses.replace(
+            structure, trig_alt_para=structure.trig_alt_para * (1 + f)
+        )
         offsets["chute_alt [%]"] = f * 100
 
-    wind_profile = sample_wind_profile(wind_base_speed, "wind" in selected, grids.get("wind"), rng)
+    wind_profile = sample_wind_profile(
+        wind_base_speed, "wind" in selected, grids.get("wind"), rng
+    )
     if "wind" in selected:
         speeds = [s for _, s, _ in wind_profile]
         offsets["wind_min [m/s]"] = min(speeds)
@@ -860,21 +1044,37 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
     )
     with tab_structure:
         structure_vals = render_dataclass_form(
-            default_structure, f"mcs{default_structure.mode_CoM}", advanced,
-            ESSENTIAL_FIELDS["Structure"], exclude_fields={"mode_CoM"},
+            default_structure,
+            f"mcs{default_structure.mode_CoM}",
+            advanced,
+            ESSENTIAL_FIELDS["Structure"],
+            exclude_fields={"mode_CoM"},
         )
     with tab_propellant:
         propellant_vals = render_dataclass_form(
-            default_propellant, "mcp", advanced, ESSENTIAL_FIELDS["Propellant"],
-            exclude_fields={"thrust_curve_mode", "derated_thrust", "m_lox_density", "m_eth_density"},
+            default_propellant,
+            "mcp",
+            advanced,
+            ESSENTIAL_FIELDS["Propellant"],
+            exclude_fields={
+                "thrust_curve_mode",
+                "derated_thrust",
+                "m_lox_density",
+                "m_eth_density",
+            },
         )
         propellant_vals["thrust_curve_mode"] = default_propellant.thrust_curve_mode
         propellant_vals["derated_thrust"] = default_propellant.derated_thrust
     with tab_parameters:
         site_options = ["Custom"] + list(LAUNCH_SITES.keys())
-        mc_site_choice = st.selectbox("Launch site preset", site_options, key="mc_site_preset")
+        mc_site_choice = st.selectbox(
+            "Launch site preset", site_options, key="mc_site_preset"
+        )
 
-        if mc_site_choice != "Custom" and st.session_state.get("_mc_prev_site_preset") != mc_site_choice:
+        if (
+            mc_site_choice != "Custom"
+            and st.session_state.get("_mc_prev_site_preset") != mc_site_choice
+        ):
             site = LAUNCH_SITES[mc_site_choice]
             st.session_state["mcpar_latitude"] = site["latitude"]
             st.session_state["mcpar_longitude"] = site["longitude"]
@@ -882,8 +1082,12 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
         st.session_state["_mc_prev_site_preset"] = mc_site_choice
 
         parameters_vals = render_dataclass_form(
-            default_parameters, "mcpar", advanced, ESSENTIAL_FIELDS["Parameters"],
-            exclude_fields={"version", "save_files", "write_to_file"} | PARAMETERS_HIDDEN_FIELDS,
+            default_parameters,
+            "mcpar",
+            advanced,
+            ESSENTIAL_FIELDS["Parameters"],
+            exclude_fields={"version", "save_files", "write_to_file"}
+            | PARAMETERS_HIDDEN_FIELDS,
         )
         parameters_vals["version"] = default_parameters.version
         parameters_vals["save_files"] = False
@@ -900,12 +1104,16 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
     mc_cols = st.columns(3)
     for i, (key, info) in enumerate(MC_VARIABLES.items()):
         with mc_cols[i % 3]:
-            if st.checkbox(info["label"], value=False, key=f"mc_var_{key}", help=info["help"]):
+            if st.checkbox(
+                info["label"], value=False, key=f"mc_var_{key}", help=info["help"]
+            ):
                 selected.add(key)
 
     wind_base_speed = st.number_input(
         "Vitesse de vent de base [m/s]",
-        min_value=0.0, value=5.0, step=0.5,
+        min_value=0.0,
+        value=5.0,
+        step=0.5,
         key="mc_wind_base_speed",
         help=(
             "Vent de référence pour tous les tirs Monte Carlo (évite un appel "
@@ -933,23 +1141,37 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
                 st.markdown(f"**{MC_VARIABLES[key]['label']}**")
             with col_r:
                 r = st.number_input(
-                    "± range (%)", min_value=0.1, max_value=100.0,
-                    value=default_range, step=0.5, key=f"mc_range_{key}",
+                    "± range (%)",
+                    min_value=0.1,
+                    max_value=100.0,
+                    value=default_range,
+                    step=0.5,
+                    key=f"mc_range_{key}",
                 )
             with col_s:
                 s = st.number_input(
-                    "Pas (%)", min_value=0.1, max_value=50.0,
-                    value=default_step, step=0.1, key=f"mc_step_{key}",
+                    "Pas (%)",
+                    min_value=0.1,
+                    max_value=50.0,
+                    value=default_step,
+                    step=0.1,
+                    key=f"mc_step_{key}",
                 )
             ranges[key] = (r, s)
     else:
         st.caption("Coche au moins un paramètre ci-dessus pour régler sa plage.")
 
     n_runs = st.number_input(
-        "Nombre de simulations", min_value=5, max_value=500, value=30, step=5,
+        "Nombre de simulations",
+        min_value=5,
+        max_value=500,
+        value=30,
+        step=5,
     )
 
-    run_mc_clicked = st.button("Lancer l'analyse Monte Carlo", type="primary", disabled=(len(selected) == 0))
+    run_mc_clicked = st.button(
+        "Lancer l'analyse Monte Carlo", type="primary", disabled=(len(selected) == 0)
+    )
     if len(selected) == 0:
         st.caption("Coche au moins un paramètre à faire varier pour lancer l'analyse.")
 
@@ -965,12 +1187,21 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
         progress = st.progress(0.0, text="Simulations Monte Carlo en cours...")
         for i in range(int(n_runs)):
             struct_i, prop_i, params_i, wind_profile_i, offsets = apply_mc_perturbation(
-                base_structure, base_propellant, base_parameters, selected, grids, wind_base_speed, rng,
+                base_structure,
+                base_propellant,
+                base_parameters,
+                selected,
+                grids,
+                wind_base_speed,
+                rng,
             )
             try:
                 res = run_simulation(
-                    struct_i, prop_i, params_i,
-                    work_dir="mc_output", draw_rocket=False,
+                    struct_i,
+                    prop_i,
+                    params_i,
+                    work_dir="mc_output",
+                    draw_rocket=False,
                     wind_profile=wind_profile_i,
                 )
                 # Vitesse de vent AU SOL (première couche du profil, alt=0),
@@ -978,10 +1209,15 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
                 # le profil, qui dépasserait presque toujours le seuil vu le
                 # nombre de couches d'altitude tirées indépendamment.
                 ground_wind_i = wind_profile_i[0][1]
-                runs.append({"offsets": offsets, "wind_speed": ground_wind_i, "result": res})
+                runs.append(
+                    {"offsets": offsets, "wind_speed": ground_wind_i, "result": res}
+                )
             except Exception:  # noqa: BLE001
                 n_failed += 1
-            progress.progress((i + 1) / int(n_runs), text=f"Simulations Monte Carlo en cours... ({i + 1}/{int(n_runs)})")
+            progress.progress(
+                (i + 1) / int(n_runs),
+                text=f"Simulations Monte Carlo en cours... ({i + 1}/{int(n_runs)})",
+            )
         progress.empty()
 
         baseline_result = None
@@ -991,10 +1227,15 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
             # pour rester comparable, que "Wind" soit coché ou non. Sinon le
             # nominal irait chercher la météo réelle (Windy/GFS), incohérente
             # avec le vent utilisé par tous les tirs MC.
-            baseline_wind_profile = sample_wind_profile(wind_base_speed, False, None, rng)
+            baseline_wind_profile = sample_wind_profile(
+                wind_base_speed, False, None, rng
+            )
             baseline_result = run_simulation(
-                base_structure, base_propellant, base_parameters,
-                work_dir="mc_output", draw_rocket=False,
+                base_structure,
+                base_propellant,
+                base_parameters,
+                work_dir="mc_output",
+                draw_rocket=False,
                 wind_profile=baseline_wind_profile,
             )
         except Exception:  # noqa: BLE001
@@ -1030,25 +1271,43 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
             col_c1, col_c2, col_c3, col_c4 = st.columns(4)
             with col_c1:
                 crit_wind_max = st.number_input(
-                    "Vent au sol < [m/s]", min_value=0.0, value=8.0, step=0.5, key="mc_crit_wind",
+                    "Vent au sol < [m/s]",
+                    min_value=0.0,
+                    value=8.0,
+                    step=0.5,
+                    key="mc_crit_wind",
                 )
             with col_c2:
                 crit_rail_vel_min = st.number_input(
-                    "Vitesse sortie rail ≥ [m/s]", min_value=0.0, value=30.0, step=1.0, key="mc_crit_railvel",
+                    "Vitesse sortie rail ≥ [m/s]",
+                    min_value=0.0,
+                    value=30.0,
+                    step=1.0,
+                    key="mc_crit_railvel",
                 )
             with col_c3:
                 crit_stability_min = st.number_input(
-                    "Stabilité sortie rail > [cal]", min_value=0.0, value=3.0, step=0.5, key="mc_crit_stability",
+                    "Stabilité sortie rail > [cal]",
+                    min_value=0.0,
+                    value=3.0,
+                    step=0.5,
+                    key="mc_crit_stability",
                 )
             with col_c4:
                 crit_apogee_min = st.number_input(
-                    "Apogée ≥ [m]", min_value=0.0, value=3000.0, step=50.0, key="mc_crit_apogee",
+                    "Apogée ≥ [m]",
+                    min_value=0.0,
+                    value=3000.0,
+                    step=50.0,
+                    key="mc_crit_apogee",
                 )
 
         n_ok = 0
         for r in runs:
             res = r["result"]
-            wind_ok = r.get("wind_speed") is not None and r["wind_speed"] < crit_wind_max
+            wind_ok = (
+                r.get("wind_speed") is not None and r["wind_speed"] < crit_wind_max
+            )
             vel_ok = res["out_of_rail_velocity"] >= crit_rail_vel_min
             stab_ok = res["out_of_rail_stability_margin"] > crit_stability_min
             apogee_ok = res["apogee_agl"] >= crit_apogee_min
@@ -1071,7 +1330,9 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
         with tab_3d:
             wind_threshold = st.number_input(
                 "Seuil de vent mis en évidence [m/s]",
-                min_value=0.0, value=8.0, step=0.5,
+                min_value=0.0,
+                value=8.0,
+                step=0.5,
                 key="mc_wind_threshold",
                 help="Les trajectoires dont le vent tiré AU SOL (altitude 0) dépasse ce seuil sont tracées en orange.",
             )
@@ -1087,7 +1348,12 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
             low_wind_paths, high_wind_paths = [], []
             for i, r in enumerate(runs):
                 m = r["result"]["map"]
-                path = [[lon, lat, alt] for lat, lon, alt in zip(m["latitude"], m["longitude"], m["altitude"])]
+                path = [
+                    [lon, lat, alt]
+                    for lat, lon, alt in zip(
+                        m["latitude"], m["longitude"], m["altitude"]
+                    )
+                ]
                 entry = {"path": path, **_run_tooltip_props(i + 1, r["result"])}
                 if r.get("wind_speed") is not None and r["wind_speed"] > wind_threshold:
                     high_wind_paths.append(entry)
@@ -1096,53 +1362,95 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
 
             layers = []
             if low_wind_paths:
-                layers.append(pdk.Layer(
-                    "PathLayer", data=low_wind_paths, get_path="path",
-                    get_color=[70, 130, 180, 160], get_width=3, width_min_pixels=1.5,
-                    pickable=True, auto_highlight=True,
-                ))
+                layers.append(
+                    pdk.Layer(
+                        "PathLayer",
+                        data=low_wind_paths,
+                        get_path="path",
+                        get_color=[70, 130, 180, 160],
+                        get_width=3,
+                        width_min_pixels=1.5,
+                        pickable=True,
+                        auto_highlight=True,
+                    )
+                )
             if high_wind_paths:
-                layers.append(pdk.Layer(
-                    "PathLayer", data=high_wind_paths, get_path="path",
-                    get_color=[255, 140, 0, 200], get_width=3, width_min_pixels=1.5,
-                    pickable=True, auto_highlight=True,
-                ))
+                layers.append(
+                    pdk.Layer(
+                        "PathLayer",
+                        data=high_wind_paths,
+                        get_path="path",
+                        get_color=[255, 140, 0, 200],
+                        get_width=3,
+                        width_min_pixels=1.5,
+                        pickable=True,
+                        auto_highlight=True,
+                    )
+                )
 
             launch_lat = runs[0]["result"]["map"]["launch_latitude"]
             launch_lon = runs[0]["result"]["map"]["launch_longitude"]
 
             if baseline_result:
                 bm = baseline_result["map"]
-                nominal_path = [[lon, lat, alt] for lat, lon, alt in zip(bm["latitude"], bm["longitude"], bm["altitude"])]
-                nominal_entry = {"path": nominal_path, **_run_tooltip_props("Nominal", baseline_result)}
-                layers.append(pdk.Layer(
-                    "PathLayer", data=[nominal_entry], get_path="path",
-                    get_color=[220, 20, 60, 230], get_width=6, width_min_pixels=3,
-                    pickable=True, auto_highlight=True,
-                ))
+                nominal_path = [
+                    [lon, lat, alt]
+                    for lat, lon, alt in zip(
+                        bm["latitude"], bm["longitude"], bm["altitude"]
+                    )
+                ]
+                nominal_entry = {
+                    "path": nominal_path,
+                    **_run_tooltip_props("Nominal", baseline_result),
+                }
+                layers.append(
+                    pdk.Layer(
+                        "PathLayer",
+                        data=[nominal_entry],
+                        get_path="path",
+                        get_color=[220, 20, 60, 230],
+                        get_width=6,
+                        width_min_pixels=3,
+                        pickable=True,
+                        auto_highlight=True,
+                    )
+                )
 
-            layers.append(pdk.Layer(
-                "ScatterplotLayer",
-                data=[{"position": [launch_lon, launch_lat, 0]}],
-                get_position="position", get_fill_color=[0, 170, 60], get_radius=25,
-                radius_min_pixels=6,
-            ))
+            layers.append(
+                pdk.Layer(
+                    "ScatterplotLayer",
+                    data=[{"position": [launch_lon, launch_lat, 0]}],
+                    get_position="position",
+                    get_fill_color=[0, 170, 60],
+                    get_radius=25,
+                    radius_min_pixels=6,
+                )
+            )
 
-            view_state = pdk.ViewState(latitude=launch_lat, longitude=launch_lon, zoom=12.5, pitch=55)
-            st.pydeck_chart(pdk.Deck(
-                layers=layers,
-                initial_view_state=view_state,
-                tooltip={
-                    "html": (
-                        "<b>Tir {run_id}</b><br/>"
-                        "Stabilité sortie rail: {stability_str}<br/>"
-                        "Vitesse sortie rail: {velocity_str}<br/>"
-                        "Apogée: {apogee_str}"
-                    ),
-                    "style": {"backgroundColor": "rgba(30,30,30,0.9)", "color": "white"},
-                },
-            ))
-            st.caption("Survole une trajectoire pour voir sa stabilité/vitesse en sortie de rail et son apogée.")
+            view_state = pdk.ViewState(
+                latitude=launch_lat, longitude=launch_lon, zoom=12.5, pitch=55
+            )
+            st.pydeck_chart(
+                pdk.Deck(
+                    layers=layers,
+                    initial_view_state=view_state,
+                    tooltip={
+                        "html": (
+                            "<b>Tir {run_id}</b><br/>"
+                            "Stabilité sortie rail: {stability_str}<br/>"
+                            "Vitesse sortie rail: {velocity_str}<br/>"
+                            "Apogée: {apogee_str}"
+                        ),
+                        "style": {
+                            "backgroundColor": "rgba(30,30,30,0.9)",
+                            "color": "white",
+                        },
+                    },
+                )
+            )
+            st.caption(
+                "Survole une trajectoire pour voir sa stabilité/vitesse en sortie de rail et son apogée."
+            )
             st.caption(
                 f"{len(runs)} trajectoires sur fond de carte réelle — orange = vent au sol > {wind_threshold:.1f} m/s "
                 f"({len(high_wind_paths)} tirs), bleu = vent au sol ≤ {wind_threshold:.1f} m/s ({len(low_wind_paths)} tirs), "
@@ -1157,7 +1465,8 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
             impact_x = [r["result"]["map"]["impact_x"] for r in runs]
             impact_y = [r["result"]["map"]["impact_y"] for r in runs]
             is_high_wind = [
-                (r.get("wind_speed") is not None and r["wind_speed"] > wind_threshold) for r in runs
+                (r.get("wind_speed") is not None and r["wind_speed"] > wind_threshold)
+                for r in runs
             ]
 
             fig2d = go.Figure()
@@ -1165,28 +1474,43 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
             low_y = [y for y, hw in zip(impact_y, is_high_wind) if not hw]
             high_x = [x for x, hw in zip(impact_x, is_high_wind) if hw]
             high_y = [y for y, hw in zip(impact_y, is_high_wind) if hw]
-            fig2d.add_trace(go.Scatter(
-                x=low_x, y=low_y, mode="markers",
-                marker=dict(size=8, color="steelblue", opacity=0.6),
-                name=f"Wind ≤ {wind_threshold:.1f} m/s",
-            ))
-            fig2d.add_trace(go.Scatter(
-                x=high_x, y=high_y, mode="markers",
-                marker=dict(size=8, color="darkorange", opacity=0.8),
-                name=f"Wind > {wind_threshold:.1f} m/s",
-            ))
-            fig2d.add_trace(go.Scatter(
-                x=[0], y=[0], mode="markers",
-                marker=dict(size=16, color="black", symbol="triangle-up"),
-                name="Launch pad",
-            ))
-            if baseline_result:
-                fig2d.add_trace(go.Scatter(
-                    x=[baseline_result["map"]["impact_x"]], y=[baseline_result["map"]["impact_y"]],
+            fig2d.add_trace(
+                go.Scatter(
+                    x=low_x,
+                    y=low_y,
                     mode="markers",
-                    marker=dict(size=13, color="crimson", symbol="x"),
-                    name="Nominal impact",
-                ))
+                    marker=dict(size=8, color="steelblue", opacity=0.6),
+                    name=f"Wind ≤ {wind_threshold:.1f} m/s",
+                )
+            )
+            fig2d.add_trace(
+                go.Scatter(
+                    x=high_x,
+                    y=high_y,
+                    mode="markers",
+                    marker=dict(size=8, color="darkorange", opacity=0.8),
+                    name=f"Wind > {wind_threshold:.1f} m/s",
+                )
+            )
+            fig2d.add_trace(
+                go.Scatter(
+                    x=[0],
+                    y=[0],
+                    mode="markers",
+                    marker=dict(size=16, color="black", symbol="triangle-up"),
+                    name="Launch pad",
+                )
+            )
+            if baseline_result:
+                fig2d.add_trace(
+                    go.Scatter(
+                        x=[baseline_result["map"]["impact_x"]],
+                        y=[baseline_result["map"]["impact_y"]],
+                        mode="markers",
+                        marker=dict(size=13, color="crimson", symbol="x"),
+                        name="Nominal impact",
+                    )
+                )
             fig2d.update_layout(
                 xaxis_title="East (m)",
                 yaxis_title="North (m)",
@@ -1212,7 +1536,9 @@ def render_monte_carlo(default_structure, default_propellant, default_parameters
                 rows.append(row)
             st.dataframe(pd.DataFrame(rows), width="stretch")
     else:
-        st.caption("Configure les paramètres puis clique sur « Lancer l'analyse Monte Carlo ».")
+        st.caption(
+            "Configure les paramètres puis clique sur « Lancer l'analyse Monte Carlo »."
+        )
 
 
 # ========================================================================

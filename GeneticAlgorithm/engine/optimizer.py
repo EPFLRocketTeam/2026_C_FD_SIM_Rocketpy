@@ -1,7 +1,16 @@
 from abc import ABC, abstractmethod
 
+
 class OptimizerBase(ABC):
-    def __init__(self, variable_bounds, fixed_genes, integer_genes, target_apogee, height_tolerance, args):
+    def __init__(
+        self,
+        variable_bounds,
+        fixed_genes,
+        integer_genes,
+        target_apogee,
+        height_tolerance,
+        args,
+    ):
         self.variable_bounds = variable_bounds
         self.fixed_genes = fixed_genes
         self.integer_genes = integer_genes
