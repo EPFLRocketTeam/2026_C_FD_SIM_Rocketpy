@@ -757,8 +757,12 @@ DEFAULT_MC_RANGES = {
 
 
 def _mc_sample_pct(rng, grid) -> float:
-    """Pick one relative offset (in %, e.g. -6.0) from the discrete grid."""
-    return float(rng.choice(grid))
+    """Draw one relative offset (in %) from a normal law centred on 0.
+    The grid range (± max) is read as ± 3 sigma, and the draw is clipped to it."""
+    max_pct = float(np.max(np.abs(grid)))
+    sigma = max_pct / 3
+    x = rng.normal(0, sigma)
+    return float(np.clip(x, -max_pct, max_pct))
 
 
 def sample_wind_profile(wind_base_speed, gusty, grid, rng):
